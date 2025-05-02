@@ -1,0 +1,52 @@
+package com.jeannychiu.learningnotesapi.service;
+
+import com.jeannychiu.learningnotesapi.model.Note;
+import com.jeannychiu.learningnotesapi.repository.NoteRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.stream.StreamSupport;
+
+@Service
+public class NoteService {
+    private final NoteRepository noteRepository;
+
+    @Autowired
+    public NoteService(NoteRepository noteRepository) {
+        this.noteRepository = noteRepository;
+    }
+
+    public Note createNote(Note note) {
+        return noteRepository.save(note);
+    }
+
+    public Note readNoteById(Long id) {
+        return noteRepository.findById(id).orElse(null);
+    }
+
+    public List<Note> getAllNotes() {
+        return StreamSupport.stream(noteRepository.findAll().spliterator(), false).toList();
+    }
+
+    public Note updateNote(Long id, Note updatedNote) {
+        // 先找出資料
+        Note existingNote = noteRepository.findById(id).orElse(null);
+
+        // 判斷是否存在並更新欄位
+        if (existingNote != null) {
+            existingNote.setTitle(updatedNote.getTitle());
+            existingNote.setContent(updatedNote.getContent());
+            existingNote.setCreatedAt(updatedNote.getCreatedAt());
+
+            // 存回資料庫
+            return noteRepository.save(existingNote);
+        }
+
+        return null;
+    }
+
+    public void deleteNote(Long id) {
+        noteRepository.deleteById(id);
+    }
+}
