@@ -1,5 +1,6 @@
 package com.jeannychiu.learningnotesapi.model;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
@@ -16,7 +17,8 @@ public class Note {
     private String content;
 
     @Column(name = "created_at")
-    private LocalDateTime createdAt;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime createdAt = LocalDateTime.now();
 
     // Getter and Setter
     public Long getId() {
