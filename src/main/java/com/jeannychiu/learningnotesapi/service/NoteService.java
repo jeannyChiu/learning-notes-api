@@ -46,7 +46,12 @@ public class NoteService {
         return null;
     }
 
-    public void deleteNote(Long id) {
-        noteRepository.deleteById(id);
+    public boolean deleteNote(Long id) {
+        if (noteRepository.existsById(id)) {
+            noteRepository.deleteById(id);
+            return true;
+        } else {
+            return false;
+        }
     }
 }
