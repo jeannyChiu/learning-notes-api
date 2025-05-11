@@ -46,8 +46,8 @@
 
 ```json
 {
-"title": "學習 Spring Boot",
-"content": "這是我的第一筆筆記"
+  "title": "學習 Spring Boot",
+  "content": "這是我的第一筆筆記"
 }
 ```
 
@@ -76,8 +76,8 @@
 
 ```json
 {
-"title": "更新後的標題",
-"content": "更新後的內容"
+  "title": "更新後的標題",
+  "content": "更新後的內容"
 }
 ```
 
