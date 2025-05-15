@@ -1,5 +1,6 @@
 package com.jeannychiu.learningnotesapi.service;
 
+import com.jeannychiu.learningnotesapi.exception.NoteNotFoundException;
 import com.jeannychiu.learningnotesapi.model.Note;
 import com.jeannychiu.learningnotesapi.repository.NoteRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,7 +23,11 @@ public class NoteService {
     }
 
     public Note readNoteById(Long id) {
-        return noteRepository.findById(id).orElse(null);
+        Note note = noteRepository.findById(id).orElse(null);
+        if (note == null) {
+            throw new NoteNotFoundException("找不到 ID 為 " + id + " 的筆記");
+        }
+        return note;
     }
 
     public List<Note> getAllNotes() {
@@ -41,9 +46,9 @@ public class NoteService {
 
             // 存回資料庫
             return noteRepository.save(existingNote);
+        } else {
+            throw new NoteNotFoundException("找不到 ID 為 " + id + " 的筆記");
         }
-
-        return null;
     }
 
     public boolean deleteNote(Long id) {
@@ -51,7 +56,7 @@ public class NoteService {
             noteRepository.deleteById(id);
             return true;
         } else {
-            return false;
+            throw new NoteNotFoundException("找不到 ID 為 " + id + " 的筆記");
         }
     }
 }

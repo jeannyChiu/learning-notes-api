@@ -2,6 +2,7 @@ package com.jeannychiu.learningnotesapi.controller;
 
 import com.jeannychiu.learningnotesapi.model.Note;
 import com.jeannychiu.learningnotesapi.service.NoteService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -32,7 +33,7 @@ public class NoteController {
     // 路徑：/notes
     // 回傳類型：ResponseEntity<Note>
     @PostMapping("/notes")
-    public ResponseEntity<Note> createNote(@RequestBody Note note) {
+    public ResponseEntity<Note> createNote(@RequestBody @Valid Note note) {
         Note createdNote = noteService.createNote(note);
         return new ResponseEntity<>(createdNote, HttpStatus.CREATED);
     }
@@ -56,7 +57,7 @@ public class NoteController {
     // 路徑：/notes/{id}
     // 回傳類型：ResponseEntity<String>
     @PutMapping("/notes/{id}")
-    public ResponseEntity<String> updateNote(@PathVariable Long id, @RequestBody Note note) {
+    public ResponseEntity<String> updateNote(@PathVariable Long id, @RequestBody @Valid Note note) {
         Note updatedNote = noteService.updateNote(id, note);
         if (updatedNote != null) {
             return ResponseEntity.ok("ID 為 " + id + " 的筆記已更新成功");

@@ -2,6 +2,9 @@ package com.jeannychiu.learningnotesapi.model;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
 
 import java.time.LocalDateTime;
 
@@ -12,8 +15,10 @@ public class Note {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank(message = "標題不能為空")
     private String title;
 
+    @Size(max = 500, message = "內容不能超過 500 字")
     private String content;
 
     @Column(name = "created_at")
