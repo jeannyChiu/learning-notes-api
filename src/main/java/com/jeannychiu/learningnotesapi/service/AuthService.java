@@ -7,7 +7,6 @@ import com.jeannychiu.learningnotesapi.exception.InvalidCredentialsException;
 import com.jeannychiu.learningnotesapi.exception.UserAlreadyExistsException;
 import com.jeannychiu.learningnotesapi.model.User;
 import com.jeannychiu.learningnotesapi.repository.UserRepository;
-import jakarta.validation.constraints.NotBlank;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 

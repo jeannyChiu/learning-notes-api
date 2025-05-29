@@ -3,7 +3,6 @@ package com.jeannychiu.learningnotesapi.controller;
 import com.jeannychiu.learningnotesapi.dto.LoginRequest;
 import com.jeannychiu.learningnotesapi.dto.RegisterRequest;
 import com.jeannychiu.learningnotesapi.dto.UserResponse;
-import com.jeannychiu.learningnotesapi.model.User;
 import com.jeannychiu.learningnotesapi.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
