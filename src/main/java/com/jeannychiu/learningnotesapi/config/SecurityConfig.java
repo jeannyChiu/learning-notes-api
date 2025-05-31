@@ -18,7 +18,7 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(authz -> authz
-                        .requestMatchers("/register", "login").permitAll() // 開放註冊 / 登入
+                        .requestMatchers("/register", "/login", "/test-jwt", "/test-parse-jwt", "/test-validate-jwt").permitAll() // 開放註冊 / 登入
                         .anyRequest().authenticated() // 其他皆需驗證
                 );
         return http.build();

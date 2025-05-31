@@ -7,6 +7,7 @@ import com.jeannychiu.learningnotesapi.exception.InvalidCredentialsException;
 import com.jeannychiu.learningnotesapi.exception.UserAlreadyExistsException;
 import com.jeannychiu.learningnotesapi.model.User;
 import com.jeannychiu.learningnotesapi.repository.UserRepository;
+import com.jeannychiu.learningnotesapi.security.JwtUtil;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -14,10 +15,14 @@ import org.springframework.stereotype.Service;
 public class AuthService {
     private final BCryptPasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
+    private final JwtUtil jwtUtil;
 
-    public AuthService(BCryptPasswordEncoder passwordEncoder, UserRepository userRepository) {
+    public AuthService(BCryptPasswordEncoder passwordEncoder,
+                       UserRepository userRepository,
+                       JwtUtil jwtUtil) {
         this.passwordEncoder = passwordEncoder;
         this.userRepository = userRepository;
+        this.jwtUtil = jwtUtil;
     }
 
     public UserResponse register(RegisterRequest request){
@@ -55,6 +60,7 @@ public class AuthService {
         userResponse.setId(user.getId());
         userResponse.setEmail(user.getEmail());
         userResponse.setRole(user.getRole());
+        userResponse.setToken(jwtUtil.generateToken((user.getEmail())));
         return userResponse;
     }
 }
