@@ -33,3 +33,10 @@ build/
 .vscode/
 # SpecStory explanation file
 .specstory/.what-is-this.md
+.specstory/history/2025-05-02_07-44Z-尋求寫作改進建議.md
+.specstory/history/2025-05-24_15-09Z-spring-security-user-model-setup-guide.md
+.specstory/history/2025-06-25_15-04Z-補強-readme-md-文件內容.md
+.specstory/history/2025-06-28_05-32Z-釐清401錯誤的原因.md
+.cursorindexingignore
+.specstory/.gitignore
+.gitignore

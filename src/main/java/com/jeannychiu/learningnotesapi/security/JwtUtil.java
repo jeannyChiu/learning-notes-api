@@ -19,11 +19,12 @@ public class JwtUtil {
     @Value("${jwt.expiration}")
     private long expirationTime;
 
-    public String generateToken(String email) {
+    public String generateToken(String email, String role) {
         Key key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
 
         return Jwts.builder()
                 .subject(email)
+                .claim("role", role)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expirationTime))
                 .signWith(key)
@@ -64,4 +65,25 @@ public class JwtUtil {
             throw new InvalidTokenException("無效的 JWT token: " + e.getMessage());
         }
     };
+
+    public String getRoleFromToken(String token) {
+        try {
+            Key key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
+            Claims claims = Jwts.parser()
+                    .verifyWith((SecretKey) key)
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+
+            System.out.println("role from jwt: " + claims.get("role", String.class));
+
+            return claims.get("role", String.class);
+
+
+        } catch (Exception e) {
+            throw new InvalidTokenException("無效的 JWT token: " + e.getMessage());
+        }
+
+    }
+
 }

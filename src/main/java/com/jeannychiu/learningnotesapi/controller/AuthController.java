@@ -6,6 +6,7 @@ import com.jeannychiu.learningnotesapi.dto.UserResponse;
 import com.jeannychiu.learningnotesapi.security.JwtUtil;
 import com.jeannychiu.learningnotesapi.service.AuthService;
 import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -30,7 +31,7 @@ public class AuthController {
 
     @GetMapping("/test-jwt")
     public String testJwt(){
-        return jwtUtil.generateToken("test@example.com");
+        return jwtUtil.generateToken("test@example.com", "USER");
     }
 
     @GetMapping("/test-parse-jwt")
@@ -41,5 +42,11 @@ public class AuthController {
     @GetMapping("/test-validate-jwt")
     public boolean testValidateJwt(@RequestParam String token, @RequestParam String email){
         return jwtUtil.validateToken(token, email);
+    }
+
+    @GetMapping("/admin-only")
+    @PreAuthorize("hasRole('ADMIN')")
+    public String adminEndpoint() {
+        return "只有管理員能看到這段話";
     }
 }

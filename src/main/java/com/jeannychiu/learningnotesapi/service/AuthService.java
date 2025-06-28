@@ -60,7 +60,7 @@ public class AuthService {
         userResponse.setId(user.getId());
         userResponse.setEmail(user.getEmail());
         userResponse.setRole(user.getRole());
-        userResponse.setToken(jwtUtil.generateToken((user.getEmail())));
+        userResponse.setToken(jwtUtil.generateToken((user.getEmail()), user.getRole()));
         return userResponse;
     }
 }
