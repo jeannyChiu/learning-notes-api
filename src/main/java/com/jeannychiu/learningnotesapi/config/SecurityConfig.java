@@ -34,10 +34,10 @@ public class SecurityConfig {
             CustomAccessDeniedHandler customAccessDeniedHandler) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // 不要 session，改用JWT
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authz -> authz
-                        .requestMatchers("/register", "/login", "/test-jwt", "/test-parse-jwt", "/test-validate-jwt").permitAll() // 開放註冊 / 登入
-                        .anyRequest().authenticated() // 其他皆需驗證
+                        .requestMatchers("/auth/register", "/auth/login", "/test-jwt", "/test-parse-jwt", "/test-validate-jwt").permitAll() // 更新這裡
+                        .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .exceptionHandling(exception -> exception

@@ -3,6 +3,9 @@ package com.jeannychiu.learningnotesapi.service;
 import com.jeannychiu.learningnotesapi.exception.NoteNotFoundException;
 import com.jeannychiu.learningnotesapi.model.Note;
 import com.jeannychiu.learningnotesapi.repository.NoteRepository;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -30,8 +33,8 @@ public class NoteService {
         return note;
     }
 
-    public List<Note> getAllNotes() {
-        return StreamSupport.stream(noteRepository.findAll().spliterator(), false).toList();
+    public Page<Note> getAllNotes(Pageable pageable) {
+        return noteRepository.findAll(pageable);
     }
 
     public Note updateNote(Long id, Note updatedNote) {

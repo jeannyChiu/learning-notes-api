@@ -3,6 +3,9 @@ package com.jeannychiu.learningnotesapi.controller;
 import com.jeannychiu.learningnotesapi.model.Note;
 import com.jeannychiu.learningnotesapi.service.NoteService;
 import jakarta.validation.Valid;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,10 +25,12 @@ public class NoteController {
     // 取得所有筆記
     // HTTP 方法：GET
     // 路徑：/notes
-    // 回傳類型：List<Note>
+    // 回傳類型：Page<Note>
     @GetMapping("/notes")
-    public List<Note> getAllNotes() {
-        return noteService.getAllNotes();
+    public Page<Note> getAllNotes(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return noteService.getAllNotes(PageRequest.of(page, size));
     }
 
     // 創建筆記
