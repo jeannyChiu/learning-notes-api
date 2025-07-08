@@ -92,6 +92,12 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- 日誌依賴 -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>

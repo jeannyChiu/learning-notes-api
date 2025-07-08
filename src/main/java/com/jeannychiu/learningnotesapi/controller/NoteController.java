@@ -9,9 +9,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 public class NoteController {
@@ -22,66 +22,86 @@ public class NoteController {
         this.noteService = noteService;
     }
 
-    // 取得所有筆記
+    // 取得所有筆記 (根據用戶角色返回不同結果)
     // HTTP 方法：GET
     // 路徑：/notes
     // 回傳類型：Page<Note>
     @GetMapping("/notes")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
     public Page<Note> getAllNotes(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        return noteService.getAllNotes(PageRequest.of(page, size));
+            @RequestParam(defaultValue = "10") int size,
+            Authentication authentication) {
+        
+        String userEmail = authentication.getName();
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        
+        return noteService.getAllNotes(PageRequest.of(page, size), userEmail, isAdmin);
     }
 
-    // 創建筆記
+    // 創建筆記 (設置當前用戶為筆記擁有者)
     // HTTP 方法：POST
     // 路徑：/notes
     // 回傳類型：ResponseEntity<Note>
     @PostMapping("/notes")
-    public ResponseEntity<Note> createNote(@RequestBody @Valid Note note) {
-        Note createdNote = noteService.createNote(note);
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    public ResponseEntity<Note> createNote(@RequestBody @Valid Note note, Authentication authentication) {
+        String userEmail = authentication.getName();
+        Note createdNote = noteService.createNote(note, userEmail);
+
         return new ResponseEntity<>(createdNote, HttpStatus.CREATED);
     }
 
-    // 取得特定ID筆記
+    // 根據 ID 讀取筆記 (檢查權限)
     // HTTP 方法：GET
     // 路徑：/notes/{id}
     // 回傳類型：ResponseEntity<Note>
     @GetMapping("/notes/{id}")
-    public ResponseEntity<Note> readNoteById(@PathVariable Long id) {
-        Note note = noteService.readNoteById(id);
-        if (note != null) {
-            return ResponseEntity.ok(note);
-        } else {
-            return ResponseEntity.notFound().build();
-        }
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    public ResponseEntity<Note> getNoteById(@PathVariable Long id, Authentication authentication) {
+        String userEmail = authentication.getName();
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        
+        Note note = noteService.readNoteById(id, userEmail, isAdmin);
+        
+        return ResponseEntity.ok(note);
     }
 
-    // 更新特定ID筆記
+    // 更新筆記 (檢查權限)
     // HTTP 方法：PUT
     // 路徑：/notes/{id}
-    // 回傳類型：ResponseEntity<String>
+    // 回傳類型：ResponseEntity<Note>
     @PutMapping("/notes/{id}")
-    public ResponseEntity<String> updateNote(@PathVariable Long id, @RequestBody @Valid Note note) {
-        Note updatedNote = noteService.updateNote(id, note);
-        if (updatedNote != null) {
-            return ResponseEntity.ok("ID 為 " + id + " 的筆記已更新成功");
-        } else {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("ID 為 " + id + " 的筆記不存在");
-        }
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    public ResponseEntity<Note> updateNote(
+            @PathVariable Long id, 
+            @RequestBody @Valid Note noteDetails,
+            Authentication authentication) {
+
+        String userEmail = authentication.getName();
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+        Note updatedNote = noteService.updateNote(id, noteDetails, userEmail, isAdmin);
+        
+        return ResponseEntity.ok(updatedNote);
     }
 
-    // 刪除特定ID筆記
+    // 刪除筆記 (檢查權限)
     // HTTP 方法：DELETE
     // 路徑：/notes/{id}
-    // 回傳類型：ResponseEntity<String>
+    // 回傳類型：ResponseEntity<Void>
     @DeleteMapping("/notes/{id}")
-    public ResponseEntity<String> deleteNote(@PathVariable Long id) {
-        boolean deleted = noteService.deleteNote(id);
-        if (deleted) {
-            return ResponseEntity.ok("ID 為 " + id + " 的筆記已刪除成功");
-        } else {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("ID 為 " + id + " 的筆記不存在");
-        }
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    public ResponseEntity<Void> deleteNote(@PathVariable Long id, Authentication authentication) {
+        String userEmail = authentication.getName();
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+        noteService.deleteNote(id, userEmail, isAdmin);
+        
+        return ResponseEntity.noContent().build();
     }
 }

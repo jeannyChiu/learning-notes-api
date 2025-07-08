@@ -1,9 +1,14 @@
 package com.jeannychiu.learningnotesapi.config;
 
+import com.jeannychiu.learningnotesapi.filter.TestEndpointFilter;
 import com.jeannychiu.learningnotesapi.security.CustomAccessDeniedHandler;
 import com.jeannychiu.learningnotesapi.security.JwtAuthenticationEntryPoint;
 import com.jeannychiu.learningnotesapi.security.JwtAuthenticationFilter;
 import com.jeannychiu.learningnotesapi.security.JwtUtil;
+
+import java.util.Arrays;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -12,6 +17,10 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.context.SecurityContextHolderFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
 @EnableMethodSecurity
@@ -25,25 +34,58 @@ public class SecurityConfig {
     public JwtAuthenticationFilter jwtAuthenticationFilter(JwtUtil jwtUtil) {
         return new JwtAuthenticationFilter(jwtUtil);
     }
+    
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource(
+            @Value("${app.cors.allowed-origins:*}") String allowedOrigins,
+            @Value("${app.cors.allowed-methods:GET,POST,PUT,DELETE,OPTIONS}") String allowedMethods,
+            @Value("${app.cors.allowed-headers:*}") String allowedHeaders,
+            @Value("${app.cors.allow-credentials:false}") boolean allowCredentials,
+            @Value("${app.cors.max-age:3600}") long maxAge) {
+        
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
+        configuration.setAllowedMethods(Arrays.asList(allowedMethods.split(",")));
+        configuration.setAllowedHeaders(Arrays.asList(allowedHeaders.split(",")));
+        configuration.setAllowCredentials(allowCredentials);
+        configuration.setMaxAge(maxAge);
+        
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
 
     @Bean
     public SecurityFilterChain filterChain(
             HttpSecurity http,
             JwtAuthenticationFilter jwtAuthenticationFilter,
             JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint,
-            CustomAccessDeniedHandler customAccessDeniedHandler) throws Exception {
+            CustomAccessDeniedHandler customAccessDeniedHandler,
+            TestEndpointFilter testEndpointFilter,
+            CorsConfigurationSource corsConfigurationSource,
+            @Value("${app.enable-test-endpoints:false}") boolean enableTestEndpoints) throws Exception {
+        
         http
-                .csrf(csrf -> csrf.disable())
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(authz -> authz
-                        .requestMatchers("/auth/register", "/auth/login", "/test-jwt", "/test-parse-jwt", "/test-validate-jwt").permitAll() // 更新這裡
-                        .anyRequest().authenticated()
-                )
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .exceptionHandling(exception -> exception
-                        .authenticationEntryPoint(jwtAuthenticationEntryPoint)
-                        .accessDeniedHandler(customAccessDeniedHandler)
-                );
+            .cors(cors -> cors.configurationSource(corsConfigurationSource))
+            .csrf(csrf -> csrf.disable())
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(auth -> {
+                auth.requestMatchers("/auth/register", "/auth/login").permitAll();
+                
+                // 測試端點的處理完全交給 TestEndpointFilter
+                if (enableTestEndpoints) {
+                    auth.requestMatchers("/auth/test-jwt", "/auth/test-parse-jwt", "/auth/test-validate-jwt").permitAll();
+                }
+                
+                auth.anyRequest().authenticated();
+            })
+            // 確保 TestEndpointFilter 在所有 Spring Security 過濾器之前執行
+            .addFilterBefore(testEndpointFilter, SecurityContextHolderFilter.class)
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .exceptionHandling(exception -> exception
+                    .authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                    .accessDeniedHandler(customAccessDeniedHandler)
+            );
 
         return http.build();
     }

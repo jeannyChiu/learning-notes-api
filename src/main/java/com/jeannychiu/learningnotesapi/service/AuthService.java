@@ -4,10 +4,15 @@ import com.jeannychiu.learningnotesapi.dto.LoginRequest;
 import com.jeannychiu.learningnotesapi.dto.RegisterRequest;
 import com.jeannychiu.learningnotesapi.dto.UserResponse;
 import com.jeannychiu.learningnotesapi.exception.InvalidCredentialsException;
+import com.jeannychiu.learningnotesapi.exception.InvalidPasswordException;
 import com.jeannychiu.learningnotesapi.exception.UserAlreadyExistsException;
 import com.jeannychiu.learningnotesapi.model.User;
 import com.jeannychiu.learningnotesapi.repository.UserRepository;
 import com.jeannychiu.learningnotesapi.security.JwtUtil;
+import com.jeannychiu.learningnotesapi.validator.PasswordValidator;
+
+import java.util.List;
+
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -29,6 +34,12 @@ public class AuthService {
         // 檢查 email 是否已存在
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new UserAlreadyExistsException("Email 已經被註冊");
+        }
+
+        // 檢查密碼強度
+        List<String> passwordErrors = PasswordValidator.validate(request.getPassword());
+        if (!passwordErrors.isEmpty()) {
+            throw new InvalidPasswordException("密碼不符合強度要求: " + String.join("; ", passwordErrors));
         }
 
         // 建立新用戶

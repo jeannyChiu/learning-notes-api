@@ -86,4 +86,19 @@ public class JwtUtil {
 
     }
 
+    public boolean isTokenExpired(String token) {
+        try {
+            Key key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
+            Claims claims = Jwts.parser()
+                    .verifyWith((SecretKey) key)
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+
+            return claims.getExpiration().before(new Date());
+        } catch (Exception e) {
+            throw new InvalidTokenException("無效的 JWT token: " + e.getMessage());
+        }
+    }
+
 }
