@@ -74,9 +74,16 @@ public class LogAspect {
             // 將Request參數轉成字串 (RequestBody)
             requestBody = mapper.writeValueAsString(joinPoint.getArgs());
             // 將ResponseBody轉成字串
-            responseBody = mapper.writeValueAsString(result);
+            String fullResponseBody = mapper.writeValueAsString(result);
+            
+            // 限制回應內容大小（避免過大導致資料庫問題）
+            if (fullResponseBody != null && fullResponseBody.length() > 50000) {
+                responseBody = fullResponseBody.substring(0, 50000) + "... [TRUNCATED]";
+            } else {
+                responseBody = fullResponseBody;
+            }
         } catch (Exception e) {
-            responseBody = "Failed to parse response body";
+            responseBody = "Failed to parse response body: " + e.getMessage();
         }
 
         // 組成ApiLog
