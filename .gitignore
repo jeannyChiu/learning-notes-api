@@ -31,6 +31,9 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Application Logs ###
+logs/
 # SpecStory explanation file
 .specstory/.what-is-this.md
 .specstory/history/2025-05-02_07-44Z-尋求寫作改進建議.md

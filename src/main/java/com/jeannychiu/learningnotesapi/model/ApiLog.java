@@ -20,11 +20,11 @@ public class ApiLog {
     private String httpMethod;
 
     @Lob
-    @Column(name = "request_body")
+    @Column(name = "request_body", columnDefinition = "LONGTEXT")
     private String requestBody;
 
     @Lob
-    @Column(name = "response_body")
+    @Column(name = "response_body", columnDefinition = "LONGTEXT")
     private String responseBody;
 
     @Column(name = "status_code")
@@ -37,4 +37,7 @@ public class ApiLog {
     private LocalDateTime responseTime;
 
     private Long duration;
+
+    @Column(name = "user_id")
+    private Long userId;
 }
