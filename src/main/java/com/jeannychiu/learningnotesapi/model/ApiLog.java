@@ -37,4 +37,7 @@ public class ApiLog {
     private LocalDateTime responseTime;
 
     private Long duration;
+
+    @Column(name = "user_id")
+    private Long userId;
 }

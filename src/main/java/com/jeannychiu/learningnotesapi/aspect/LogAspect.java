@@ -4,6 +4,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jeannychiu.learningnotesapi.model.ApiLog;
 import com.jeannychiu.learningnotesapi.repository.ApiLogRepository;
+import com.jeannychiu.learningnotesapi.repository.UserRepository;
+import com.jeannychiu.learningnotesapi.security.JwtUtil;
+import com.jeannychiu.learningnotesapi.model.User;
 import jakarta.servlet.http.HttpServletRequest;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -19,10 +22,14 @@ import java.time.LocalDateTime;
 @Component
 public class LogAspect {
     private final ApiLogRepository apiLogRepository;
+    private final JwtUtil jwtUtil;
+    private final UserRepository userRepository;
     private ObjectMapper mapper = new ObjectMapper();
 
-    public LogAspect(ApiLogRepository apiLogRepository) {
+    public LogAspect(ApiLogRepository apiLogRepository, JwtUtil jwtUtil, UserRepository userRepository) {
         this.apiLogRepository = apiLogRepository;
+        this.jwtUtil = jwtUtil;
+        this.userRepository = userRepository;
     }
 
     @Around("execution(* com.jeannychiu.learningnotesapi.controller..*(..))")
@@ -41,11 +48,17 @@ public class LogAspect {
         ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         String uri = null;
         String method = null;
+        Long userId = null;
+        
         if(attributes != null){
             HttpServletRequest request = attributes.getRequest();
             uri = request.getRequestURI();
             method = request.getMethod();
-            System.out.println("Path: " + uri + " Method: " + method);
+            
+            // 提取使用者 ID
+            userId = extractUserIdFromRequest(request);
+            
+            System.out.println("Path: " + uri + " Method: " + method + " UserId: " + userId);
         }
 
         // 記錄呼叫後的時間
@@ -77,8 +90,28 @@ public class LogAspect {
         apilog.setResponseBody(responseBody);
         apilog.setStatusCode(statusCode);
 
+        // 設定使用者 ID
+        apilog.setUserId(userId);
+
         // 存進資料庫
         apiLogRepository.save(apilog);
         return result;
+    }
+
+    private Long extractUserIdFromRequest(HttpServletRequest request) {
+        try {
+            String authHeader = request.getHeader("Authorization");
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String token = authHeader.substring(7);
+                String email = jwtUtil.getEmailFromToken(token);
+                
+                User user = userRepository.findByEmail(email).orElse(null);
+                return user != null ? user.getId() : null;
+            }
+        } catch (Exception e) {
+            // JWT 解析失敗或使用者不存在，回傳 null
+            System.out.println("Failed to extract user ID: " + e.getMessage());
+        }
+        return null;
     }
 }
