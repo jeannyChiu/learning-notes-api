@@ -62,6 +62,21 @@ public class NoteService {
             return noteRepository.findByUserEmail(userEmail, pageable);
         }
     }
+    
+    // 搜尋筆記 (根據用戶角色返回不同結果)
+    public Page<Note> searchNotes(Pageable pageable, String userEmail, boolean isAdmin, String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return getAllNotes(pageable, userEmail, isAdmin);
+        }
+        
+        if (isAdmin) {
+            // 管理員可以搜尋所有筆記
+            return noteRepository.findByKeyword(keyword.trim(), pageable);
+        } else {
+            // 一般使用者只能搜尋自己的筆記
+            return noteRepository.findByUserEmailAndKeyword(userEmail, keyword.trim(), pageable);
+        }
+    }
 
     // 更新筆記 (檢查權限)
     public Note updateNote(Long id, Note noteDetails, String userEmail, boolean isAdmin) {

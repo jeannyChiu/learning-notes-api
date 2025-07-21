@@ -31,13 +31,18 @@ public class NoteController {
     public Page<Note> getAllNotes(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search,
             Authentication authentication) {
         
         String userEmail = authentication.getName();
         boolean isAdmin = authentication.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
         
-        return noteService.getAllNotes(PageRequest.of(page, size), userEmail, isAdmin);
+        if (search != null && !search.trim().isEmpty()) {
+            return noteService.searchNotes(PageRequest.of(page, size), userEmail, isAdmin, search);
+        } else {
+            return noteService.getAllNotes(PageRequest.of(page, size), userEmail, isAdmin);
+        }
     }
 
     // 創建筆記 (設置當前用戶為筆記擁有者)

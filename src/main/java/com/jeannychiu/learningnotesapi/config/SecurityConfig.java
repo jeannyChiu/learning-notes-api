@@ -70,7 +70,12 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> {
+                // 允許靜態資源訪問 - 更廣泛的配置
+                auth.requestMatchers("/", "/index.html", "/app.js", "/static/**", "/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll();
+                // 允許認證端點
                 auth.requestMatchers("/auth/register", "/auth/login").permitAll();
+                // 允許錯誤頁面
+                auth.requestMatchers("/error").permitAll();
                 
                 // 測試端點的處理完全交給 TestEndpointFilter
                 if (enableTestEndpoints) {

@@ -51,11 +51,12 @@ public class AuthService {
         // 存入資料庫
         User savedUser = userRepository.save(user);
 
-        // 轉換成 UserResponse 回傳
+        // 轉換成 UserResponse 回傳，包含 JWT token
         UserResponse userResponse = new UserResponse();
         userResponse.setId(savedUser.getId());
         userResponse.setEmail(savedUser.getEmail());
         userResponse.setRole(savedUser.getRole());
+        userResponse.setToken(jwtUtil.generateToken(savedUser.getEmail(), savedUser.getRole()));
         return userResponse;
     }
 
@@ -72,6 +73,18 @@ public class AuthService {
         userResponse.setEmail(user.getEmail());
         userResponse.setRole(user.getRole());
         userResponse.setToken(jwtUtil.generateToken((user.getEmail()), user.getRole()));
+        return userResponse;
+    }
+
+    public UserResponse getUserByEmail(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new InvalidCredentialsException("用戶不存在"));
+        
+        UserResponse userResponse = new UserResponse();
+        userResponse.setId(user.getId());
+        userResponse.setEmail(user.getEmail());
+        userResponse.setRole(user.getRole());
+        // 不包含 token，因為用戶已經有有效的 token
         return userResponse;
     }
 }

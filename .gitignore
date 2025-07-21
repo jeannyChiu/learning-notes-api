@@ -43,3 +43,4 @@ logs/
 .cursorindexingignore
 .specstory/.gitignore
 .gitignore
+FRONTEND_IMPLEMENTATION.md
