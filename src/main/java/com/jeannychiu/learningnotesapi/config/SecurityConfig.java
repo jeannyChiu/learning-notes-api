@@ -76,6 +76,15 @@ public class SecurityConfig {
                 auth.requestMatchers("/auth/register", "/auth/login").permitAll();
                 // 允許錯誤頁面
                 auth.requestMatchers("/error").permitAll();
+
+                // 允許 Swagger UI 和 API 文檔
+                auth.requestMatchers(
+                        "/swagger-ui/**",
+                        "/swagger-ui.html",
+                        "/v3/api-docs/**",
+                        "/swagger-resources/**",
+                        "/webjars/**"
+                ).permitAll();
                 
                 // 測試端點的處理完全交給 TestEndpointFilter
                 if (enableTestEndpoints) {
