@@ -25,6 +25,9 @@ public class NoteService {
     // 創建筆記 (設置當前用戶為筆記擁有者)
     public Note createNote(Note note, String userEmail) {
         note.setUserEmail(userEmail);
+        LocalDateTime now = LocalDateTime.now();
+        note.setCreatedAt(now);
+        note.setUpdatedAt(now);
         return noteRepository.save(note);
     }
 

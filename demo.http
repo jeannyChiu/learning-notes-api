@@ -1,0 +1,75 @@
+### Learning Notes API Demo
+### 使用方式：在支援 HTTP 文件的編輯器（如 VS Code + REST Client 擴展）中執行
+
+### 變數定義
+@baseUrl = http://localhost:8080
+@contentType = application/json
+
+### 1. 註冊新用戶
+POST {{baseUrl}}/auth/register
+Content-Type: {{contentType}}
+
+{
+  "email": "demo@example.com",
+  "password": "Demo123456!",
+  "name": "Demo User"
+}
+
+### 2. 登入取得 JWT Token
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "demo@example.com",
+  "password": "Demo123456!"
+}
+
+### 3. 取得用戶資訊（需要認證）
+@authToken = {{login.response.body.token}}
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{authToken}}
+
+### 4. 創建新筆記
+POST {{baseUrl}}/notes
+Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
+
+{
+  "title": "我的第一個筆記",
+  "content": "這是使用 Learning Notes API 創建的第一個筆記內容。"
+}
+
+### 5. 取得所有筆記（分頁）
+GET {{baseUrl}}/notes?page=0&size=10
+Authorization: Bearer {{authToken}}
+
+### 6. 取得特定筆記（請將 {id} 替換為實際筆記 ID）
+GET {{baseUrl}}/notes/45
+Authorization: Bearer {{authToken}}
+
+### 7. 更新筆記（請將 {id} 替換為實際筆記 ID）
+PUT {{baseUrl}}/notes/45
+Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
+
+{
+  "title": "更新後的筆記標題",
+  "content": "這是更新後的筆記內容，包含更多詳細資訊。"
+}
+
+### 8. 刪除筆記（請將 {id} 替換為實際筆記 ID）
+DELETE {{baseUrl}}/notes/45
+Authorization: Bearer {{authToken}}
+
+### 測試流程說明：
+# 1. 先執行註冊（如果是第一次）
+# 2. 執行登入取得 JWT Token
+# 3. 使用 Token 進行後續操作
+# 4. 創建筆記 → 查看筆記列表 → 更新筆記 → 刪除筆記
+
+### 注意事項：
+# - JWT Token 有效期為 1 小時（3600000 毫秒）
+# - 需要先啟動 MySQL 資料庫
+# - 需要先啟動 Spring Boot 應用程式
+# - 密碼必須符合強密碼規則（至少8位，包含大小寫字母、數字和特殊字符）
