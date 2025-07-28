@@ -206,6 +206,110 @@ const Modal = ({ isOpen, onClose, title, children }) => {
     );
 };
 
+// Delete Confirmation Dialog Component
+const DeleteConfirmDialog = ({ isOpen, onClose, onConfirm, title, noteTitle }) => {
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    // Handle ESC key press
+    useEffect(() => {
+        const handleEsc = (e) => {
+            if (e.key === 'Escape' && isOpen) {
+                onClose();
+            }
+        };
+        
+        if (isOpen) {
+            document.addEventListener('keydown', handleEsc);
+        }
+        
+        return () => {
+            document.removeEventListener('keydown', handleEsc);
+        };
+    }, [isOpen, onClose]);
+
+    const handleConfirm = async () => {
+        setIsDeleting(true);
+        try {
+            await onConfirm();
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+            <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                {/* Background overlay */}
+                <div 
+                    className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" 
+                    onClick={onClose}
+                ></div>
+
+                {/* Dialog */}
+                <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full">
+                    {/* Header with warning icon */}
+                    <div className="bg-red-50 px-4 pt-5 pb-4 sm:p-6">
+                        <div className="flex items-start">
+                            <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                                <i className="fas fa-exclamation-triangle text-red-600 text-lg"></i>
+                            </div>
+                            <div className="mt-0 ml-4 text-left">
+                                <h3 className="text-lg leading-6 font-medium text-gray-900">
+                                    {title || '確認刪除'}
+                                </h3>
+                                <div className="mt-2">
+                                    <p className="text-sm text-gray-600">
+                                        您確定要刪除這則筆記嗎？此操作無法復原。
+                                    </p>
+                                    {noteTitle && (
+                                        <div className="mt-3 p-3 bg-gray-100 rounded-md">
+                                            <p className="text-sm font-medium text-gray-900 truncate">
+                                                "{noteTitle}"
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                        <Button
+                            variant="danger"
+                            onClick={handleConfirm}
+                            disabled={isDeleting}
+                            className="w-full sm:ml-3 sm:w-auto"
+                        >
+                            {isDeleting ? (
+                                <>
+                                    <i className="fas fa-spinner fa-spin mr-2"></i>
+                                    刪除中...
+                                </>
+                            ) : (
+                                <>
+                                    <i className="fas fa-trash mr-2"></i>
+                                    確認刪除
+                                </>
+                            )}
+                        </Button>
+                        <Button
+                            variant="secondary"
+                            onClick={onClose}
+                            disabled={isDeleting}
+                            className="mt-3 w-full sm:mt-0 sm:w-auto"
+                        >
+                            取消
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // Toast Notification Component
 const Toast = ({ message, type = 'success', onClose }) => {
     useEffect(() => {
@@ -567,6 +671,7 @@ const NotesDashboard = ({ user, onLogout }) => {
     const [totalPages, setTotalPages] = useState(0);
     const [totalElements, setTotalElements] = useState(0);
     const [pageSize] = useState(9); // 每頁顯示9筆，適合3列網格
+    const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, noteId: null, noteTitle: '' });
 
     const showToast = (message, type = 'success') => {
         setToast({ message, type });
@@ -631,21 +736,34 @@ const NotesDashboard = ({ user, onLogout }) => {
         }
     };
 
-    const handleDeleteNote = async (noteId) => {
-        if (window.confirm('Are you sure you want to delete this note?')) {
-            try {
-                await apiService.deleteNote(noteId);
-                // 刪除後檢查是否需要調整頁碼
-                if (notes.length === 1 && currentPage > 0) {
-                    // 如果當前頁只有一筆且不是第一頁，回到上一頁
-                    loadNotes(currentPage - 1, searchTerm);
-                } else {
-                    loadNotes(currentPage, searchTerm);
-                }
-                showToast('Note deleted successfully!');
-            } catch (error) {
-                showToast('Failed to delete note', 'error');
+    const handleDeleteNote = (noteId) => {
+        // 找到要刪除的筆記以獲取標題
+        const noteToDelete = notes.find(note => note.id === noteId);
+        if (noteToDelete) {
+            setDeleteConfirm({
+                isOpen: true,
+                noteId: noteId,
+                noteTitle: noteToDelete.title
+            });
+        }
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteConfirm.noteId) return;
+        
+        try {
+            await apiService.deleteNote(deleteConfirm.noteId);
+            // 刪除後檢查是否需要調整頁碼
+            if (notes.length === 1 && currentPage > 0) {
+                // 如果當前頁只有一筆且不是第一頁，回到上一頁
+                loadNotes(currentPage - 1, searchTerm);
+            } else {
+                loadNotes(currentPage, searchTerm);
             }
+            showToast('Note deleted successfully!');
+            setDeleteConfirm({ isOpen: false, noteId: null, noteTitle: '' });
+        } catch (error) {
+            showToast('Failed to delete note', 'error');
         }
     };
 
@@ -775,6 +893,14 @@ const NotesDashboard = ({ user, onLogout }) => {
                     onCancel={() => setEditingNote(null)}
                 />
             </Modal>
+
+            {/* Delete Confirmation Dialog */}
+            <DeleteConfirmDialog
+                isOpen={deleteConfirm.isOpen}
+                onClose={() => setDeleteConfirm({ isOpen: false, noteId: null, noteTitle: '' })}
+                onConfirm={confirmDelete}
+                noteTitle={deleteConfirm.noteTitle}
+            />
 
             {/* Toast */}
             {toast && (
