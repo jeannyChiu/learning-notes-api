@@ -182,7 +182,7 @@ public class NoteService {
     @Transactional
     public void deleteNote(Long id, String userEmail, boolean isAdmin) {
         // 先檢查筆記是否存在
-        Note note = findNoteById(id);
+        findNoteById(id);
 
         // 如果不是管理員，且不是筆記擁有者，拒絕刪除
         if (!hasNotePermission(id, userEmail, isAdmin)) { 

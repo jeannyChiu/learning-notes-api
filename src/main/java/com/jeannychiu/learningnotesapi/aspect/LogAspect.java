@@ -45,7 +45,7 @@ public class LogAspect {
 
         int statusCode = 200;
         if (result instanceof org.springframework.http.ResponseEntity) {
-            statusCode = ((org.springframework.http.ResponseEntity<?>) result).getStatusCodeValue();
+            statusCode = ((org.springframework.http.ResponseEntity<Object>) result).getStatusCodeValue();
         }
         System.out.println("StatusCode: " + statusCode);
 
@@ -131,44 +131,63 @@ public class LogAspect {
         Method method = signature.getMethod();
         Object[] args = joinPoint.getArgs();
 
-        // 對於 POST 和 PUT，只記錄 @RequestBody
-        if ("POST".equals(httpMethod) || "PUT".equals(httpMethod)) {
-            for (int i = 0; i < method.getParameterCount(); i++) {
-                if (method.getParameters()[i].isAnnotationPresent(RequestBody.class)) {
-                    try {
-                        return mapper.writeValueAsString(args[i]);
-                    } catch (JsonProcessingException e) {
-                        return "Failed to serialize: " + e.getMessage();
-                    }
-                }
+        if (isPostOrPutMethod(httpMethod)) {
+            return extractRequestBodyData(method, args);
+        } else {
+            return extractGetDeleteData(args);
+        }
+    }
+
+    private boolean isPostOrPutMethod(String httpMethod) {
+        return "POST".equals(httpMethod) || "PUT".equals(httpMethod);
+    }
+
+    private String extractRequestBodyData(Method method, Object[] args) {
+        for (int i = 0; i < method.getParameterCount(); i++) {
+            if (method.getParameters()[i].isAnnotationPresent(RequestBody.class)) {
+                return serializeToJson(args[i]);
             }
+        }
+        return "";
+    }
+
+    private String extractGetDeleteData(Object[] args) {
+        if (args.length == 0) {
             return "";
         }
-        // 對於 GET 和 DELETE，記錄所有參數
-        else {
-            try {
-                // 如果沒有參數，返回空字串
-                if (args.length == 0) {
-                    return "";
-                }
 
-                // 使用原本的方式記錄所有參數
-                return mapper.writeValueAsString(args);
-            } catch (JsonProcessingException e) {
-                // 如果序列化失敗，嘗試個別處理參數
-                StringBuilder params = new StringBuilder("[");
-                for (int i = 0; i < args.length; i++) {
-                    if (i > 0) params.append(",");
-                    try {
-                        params.append(mapper.writeValueAsString(args[i]));
-                    } catch (Exception ex) {
-                        // 對於無法序列化的物件，使用 toString()
-                        params.append("\"").append(args[i]).append("\"");
-                    }
-                }
-                params.append("]");
-                return params.toString();
+        try {
+            return mapper.writeValueAsString(args);
+        } catch (JsonProcessingException e) {
+            return buildParametersManually(args);
+        }
+    }
+
+    private String serializeToJson(Object obj) {
+        try {
+            return mapper.writeValueAsString(obj);
+        } catch (JsonProcessingException e) {
+            return "Failed to serialize: " + e.getMessage();
+        }
+    }
+
+    private String buildParametersManually(Object[] args) {
+        StringBuilder params = new StringBuilder("[");
+        for (int i = 0; i < args.length; i++) {
+            if (i > 0) {
+                params.append(",");
             }
+            appendParameter(params, args[i]);
+        }
+        params.append("]");
+        return params.toString();
+    }
+
+    private void appendParameter(StringBuilder params, Object arg) {
+        try {
+            params.append(mapper.writeValueAsString(arg));
+        } catch (Exception ex) {
+            params.append("\"").append(arg).append("\"");
         }
     }
 }

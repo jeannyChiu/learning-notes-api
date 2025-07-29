@@ -1,5 +1,6 @@
 package com.jeannychiu.learningnotesapi.service;
 
+import com.jeannychiu.learningnotesapi.constant.RoleConstants;
 import com.jeannychiu.learningnotesapi.dto.LoginRequest;
 import com.jeannychiu.learningnotesapi.dto.RegisterRequest;
 import com.jeannychiu.learningnotesapi.dto.UserResponse;
@@ -69,7 +70,7 @@ public class AuthService {
         User user = new User();
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRole("USER"); // 預設新註冊為 USER
+        user.setRole(RoleConstants.USER); // 預設新註冊為 USER
 
         // 存入資料庫
         User savedUser = userRepository.save(user);

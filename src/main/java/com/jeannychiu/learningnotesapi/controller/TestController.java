@@ -1,5 +1,6 @@
 package com.jeannychiu.learningnotesapi.controller;
 
+import com.jeannychiu.learningnotesapi.constant.RoleConstants;
 import com.jeannychiu.learningnotesapi.security.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -42,7 +43,7 @@ public class TestController {
     @GetMapping("/jwt")
     public ResponseEntity<String> testJwt(HttpServletRequest request) {
         log.warn("安全警告: 測試端點 /test/jwt 被呼叫，IP: {}", request.getRemoteAddr());
-        return ResponseEntity.ok(jwtUtil.generateToken("test@example.com", "USER"));
+        return ResponseEntity.ok(jwtUtil.generateToken("test@example.com", RoleConstants.USER));
     }
 
     /**

@@ -44,7 +44,7 @@ public class JwtUtil {
             throw new InvalidTokenException("無效的 JWT token: " + e.getMessage());
         }
 
-    };
+    }
 
     public boolean validateToken(String token, String email) {
         try {
@@ -64,7 +64,7 @@ public class JwtUtil {
         } catch (Exception e) {
             throw new InvalidTokenException("無效的 JWT token: " + e.getMessage());
         }
-    };
+    }
 
     public String getRoleFromToken(String token) {
         try {
