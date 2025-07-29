@@ -11,6 +11,8 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class OpenApiConfig {
+    private static final String BEARER_SCHEME = "bearer";
+    
     @Bean
     public OpenAPI customOpenAPI() {
         // 1. 建立 Info 物件設定 API 基本資訊
@@ -26,7 +28,7 @@ public class OpenApiConfig {
         // 2. 建立 SecurityScheme 設定 JWT 認證
         SecurityScheme securityScheme = new SecurityScheme()
                 .type(SecurityScheme.Type.HTTP)
-                .scheme("bearer")
+                .scheme(BEARER_SCHEME)
                 .bearerFormat("JWT")
                 .description("請輸入登入後取得的 JWT token");
 
@@ -34,9 +36,9 @@ public class OpenApiConfig {
         return new OpenAPI()
                 .info(info)
                 .components(new Components()
-                        .addSecuritySchemes("bearer", securityScheme)
+                        .addSecuritySchemes(BEARER_SCHEME, securityScheme)
                 )
                 .addSecurityItem(new SecurityRequirement()
-                        .addList("bearer"));
+                        .addList(BEARER_SCHEME));
     }
 }

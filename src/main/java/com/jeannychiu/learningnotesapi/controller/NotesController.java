@@ -1,5 +1,6 @@
 package com.jeannychiu.learningnotesapi.controller;
 
+import com.jeannychiu.learningnotesapi.constant.RoleConstants;
 import com.jeannychiu.learningnotesapi.model.Note;
 import com.jeannychiu.learningnotesapi.service.NoteService;
 import jakarta.validation.Valid;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/notes")
 public class NotesController {
+    
     private final NoteService noteService;
 
     public NotesController(NoteService noteService) {
@@ -55,7 +57,7 @@ public class NotesController {
         
         String userEmail = authentication.getName();
         boolean isAdmin = authentication.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+                .anyMatch(a -> a.getAuthority().equals(RoleConstants.ROLE_ADMIN));
         
         if (search != null && !search.trim().isEmpty()) {
             return noteService.searchNotes(PageRequest.of(page, size), userEmail, isAdmin, search);
@@ -98,7 +100,7 @@ public class NotesController {
     public ResponseEntity<Note> getNoteById(@PathVariable Long id, Authentication authentication) {
         String userEmail = authentication.getName();
         boolean isAdmin = authentication.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+                .anyMatch(a -> a.getAuthority().equals(RoleConstants.ROLE_ADMIN));
         
         Note note = noteService.readNoteById(id, userEmail, isAdmin);
         
@@ -126,7 +128,7 @@ public class NotesController {
 
         String userEmail = authentication.getName();
         boolean isAdmin = authentication.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+                .anyMatch(a -> a.getAuthority().equals(RoleConstants.ROLE_ADMIN));
 
         Note updatedNote = noteService.updateNote(id, noteDetails, userEmail, isAdmin);
         
@@ -149,7 +151,7 @@ public class NotesController {
     public ResponseEntity<Void> deleteNote(@PathVariable Long id, Authentication authentication) {
         String userEmail = authentication.getName();
         boolean isAdmin = authentication.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+                .anyMatch(a -> a.getAuthority().equals(RoleConstants.ROLE_ADMIN));
 
         noteService.deleteNote(id, userEmail, isAdmin);
         

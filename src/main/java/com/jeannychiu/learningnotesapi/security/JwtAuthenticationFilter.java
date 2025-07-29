@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.Map;
 
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
-    private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
+    private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
     private final JwtUtil jwtUtil;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -49,7 +49,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 // 4. 再檢查 token 是否過期
                 if (jwtUtil.isTokenExpired(token)) {
                     SecurityContextHolder.clearContext();
-                    logger.warn("Token 已過期");
+                    log.warn("Token 已過期");
                     sendErrorResponse(response, HttpStatus.UNAUTHORIZED, "Token 已過期，請重新登入");
                     return;
                 }
@@ -62,20 +62,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 } else {
                     SecurityContextHolder.clearContext();
-                    logger.warn("Token 驗證失敗");
+                    log.warn("Token 驗證失敗");
                     sendErrorResponse(response, HttpStatus.UNAUTHORIZED, "Token 驗證失敗，請重新登入");
                     return;
                 }
             } catch (InvalidTokenException e) {
                 // 當 token 處理（解析、驗證）失敗時，清除 SecurityContext
                 SecurityContextHolder.clearContext();
-                logger.error("Token 處理異常: {}", e.getMessage());
+                log.error("Token 處理異常: {}", e.getMessage());
                 sendErrorResponse(response, HttpStatus.UNAUTHORIZED, "無效的 Token: " + e.getMessage());
                 return;
             } catch (Exception e) {
                 // 其他未預期的異常
                 SecurityContextHolder.clearContext();
-                logger.error("Token 處理發生未預期錯誤: {}", e.getMessage());
+                log.error("Token 處理發生未預期錯誤: {}", e.getMessage());
                 sendErrorResponse(response, HttpStatus.UNAUTHORIZED, "認證處理發生錯誤，請重新登入");
                 return;
             }
