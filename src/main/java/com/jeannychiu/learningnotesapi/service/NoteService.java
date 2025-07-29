@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import java.time.LocalDateTime;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 筆記服務層
@@ -151,6 +152,7 @@ public class NoteService {
      * @param isAdmin 是否為管理員
      * @return 更新的筆記
      */
+    @Transactional
     public Note updateNote(Long id, Note noteDetails, String userEmail, boolean isAdmin) {
         // 先檢查筆記是否存在
         Note note = findNoteById(id);
@@ -177,6 +179,7 @@ public class NoteService {
      * @param userEmail 使用者信箱
      * @param isAdmin 是否為管理員
      */
+    @Transactional
     public void deleteNote(Long id, String userEmail, boolean isAdmin) {
         // 先檢查筆記是否存在
         Note note = findNoteById(id);
