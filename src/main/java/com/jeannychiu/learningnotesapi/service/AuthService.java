@@ -16,6 +16,7 @@ import java.util.List;
 
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 使用者認證服務層
@@ -51,6 +52,7 @@ public class AuthService {
      * @throws UserAlreadyExistsException 當信箱已被註冊時
      * @throws InvalidPasswordException 當密碼不符合強度要求時
      */
+    @Transactional
     public UserResponse register(RegisterRequest request){
         // 檢查 email 是否已存在
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
