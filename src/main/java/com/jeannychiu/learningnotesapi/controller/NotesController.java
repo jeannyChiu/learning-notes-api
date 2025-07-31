@@ -1,6 +1,8 @@
 package com.jeannychiu.learningnotesapi.controller;
 
 import com.jeannychiu.learningnotesapi.constant.RoleConstants;
+import com.jeannychiu.learningnotesapi.dto.CreateNoteRequest;
+import com.jeannychiu.learningnotesapi.dto.UpdateNoteRequest;
 import com.jeannychiu.learningnotesapi.model.Note;
 import com.jeannychiu.learningnotesapi.service.NoteService;
 import jakarta.validation.Valid;
@@ -39,11 +41,12 @@ public class NotesController {
      * 根據使用者角色返回不同結果：
      * - 一般使用者：只能看到自己的筆記
      * - 管理員：可以看到所有筆記
-     * 支援分頁和搜尋功能。
+     * 支援分頁、搜尋和標籤功能。
      *
      * @param page 頁碼，從0開始 (預設值：0)
      * @param size 每頁筆數 (預設值：10)
      * @param search 搜尋關鍵字，可搜尋標題及內容 (選填)
+     * @param tag 標籤名稱 (選填)
      * @param authentication Spring Security 的認證物件
      * @return 分頁的筆記列表
      */
@@ -53,13 +56,19 @@ public class NotesController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String search,
+            @RequestParam(required = false) String tag,
             Authentication authentication) {
         
         String userEmail = authentication.getName();
         boolean isAdmin = authentication.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals(RoleConstants.ROLE_ADMIN));
-        
-        if (search != null && !search.trim().isEmpty()) {
+
+        if (tag != null && !tag.trim().isEmpty() &&
+            search != null && !search.trim().isEmpty()) {
+            return noteService.searchNotesByTagAndKeyword(PageRequest.of(page, size), userEmail, isAdmin, tag, search);
+        } else if (tag != null && !tag.trim().isEmpty()) {
+            return noteService.searchNotesByTag(PageRequest.of(page, size), userEmail, isAdmin, tag);
+        } else if (search != null && !search.trim().isEmpty()) {
             return noteService.searchNotes(PageRequest.of(page, size), userEmail, isAdmin, search);
         } else {
             return noteService.getAllNotes(PageRequest.of(page, size), userEmail, isAdmin);
@@ -77,7 +86,7 @@ public class NotesController {
      */
     @PostMapping
     @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
-    public ResponseEntity<Note> createNote(@RequestBody @Valid Note note, Authentication authentication) {
+    public ResponseEntity<Note> createNote(@RequestBody @Valid CreateNoteRequest note, Authentication authentication) {
         String userEmail = authentication.getName();
         Note createdNote = noteService.createNote(note, userEmail);
 
@@ -123,7 +132,7 @@ public class NotesController {
     @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
     public ResponseEntity<Note> updateNote(
             @PathVariable Long id, 
-            @RequestBody @Valid Note noteDetails,
+            @RequestBody @Valid UpdateNoteRequest noteDetails,
             Authentication authentication) {
 
         String userEmail = authentication.getName();

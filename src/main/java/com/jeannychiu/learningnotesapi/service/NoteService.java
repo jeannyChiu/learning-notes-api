@@ -1,12 +1,17 @@
 package com.jeannychiu.learningnotesapi.service;
 
+import com.jeannychiu.learningnotesapi.dto.CreateNoteRequest;
+import com.jeannychiu.learningnotesapi.dto.UpdateNoteRequest;
 import com.jeannychiu.learningnotesapi.exception.NoteNotFoundException;
 import com.jeannychiu.learningnotesapi.model.Note;
+import com.jeannychiu.learningnotesapi.model.Tag;
 import com.jeannychiu.learningnotesapi.repository.NoteRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import java.time.LocalDateTime;
+import java.util.Set;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,9 +29,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class NoteService {
     private final NoteRepository noteRepository;
+    private final TagService tagService;
 
-    public NoteService(NoteRepository noteRepository) {
+    public NoteService(NoteRepository noteRepository, TagService tagService) {
         this.noteRepository = noteRepository;
+        this.tagService = tagService;
     }
 
     /**
@@ -34,15 +41,28 @@ public class NoteService {
      *
      * 設置當前使用者為筆記擁有者，並自動設定建立和更新時間。
      *
-     * @param note 要創建的筆記
+     * @param createNoteRequest 要創建的筆記請求物件
      * @param userEmail 使用者信箱
      * @return 創建成功的筆記
      */
-    public Note createNote(Note note, String userEmail) {
+    public Note createNote(CreateNoteRequest createNoteRequest, String userEmail) {
+        // 建立 Note 物件
+        Note note = new Note();
+        note.setTitle(createNoteRequest.getTitle());
+        note.setContent(createNoteRequest.getContent());
         note.setUserEmail(userEmail);
+
+        // 處理標籤
+        Set<String> createNoteTags = createNoteRequest.getTagNames();
+        Set<Tag> noteTags = tagService.createOrGetTags(createNoteTags);
+        note.setTags(noteTags);
+
+        // 設定時間戳記
         LocalDateTime now = LocalDateTime.now();
         note.setCreatedAt(now);
         note.setUpdatedAt(now);
+
+        // 保存並返回
         return noteRepository.save(note);
     }
 
@@ -139,6 +159,61 @@ public class NoteService {
     }
 
     /**
+     * 根據標籤搜尋筆記
+     *
+     * - 一般使用者只能搜尋自己的筆記
+     * - 管理員可搜尋所有筆記
+     *
+     * @param pageable 分頁參數
+     * @param userEmail 使用者信箱
+     * @param isAdmin 是否為管理員
+     * @param tagName 標籤名稱
+     * @return 分頁的筆記列表
+     */
+    public Page<Note> searchNotesByTag(Pageable pageable, String userEmail, boolean isAdmin, String tagName) {
+        if (tagName == null || tagName.trim().isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        if (isAdmin) {
+            // 管理員可以搜尋所有筆記
+            return noteRepository.findByTagName(tagName.trim(), pageable);
+        } else {
+            // 一般使用者只能搜尋自己的筆記
+            return noteRepository.findByUserEmailAndTagName(userEmail, tagName.trim(), pageable);
+        }
+    }
+
+    /**
+     * 根據標籤名稱和關鍵字搜尋筆記
+     *
+     * - 一般使用者只能搜尋自己的筆記
+     * - 管理員可搜尋所有筆記
+     *
+     * @param pageable 分頁參數
+     * @param userEmail 使用者信箱
+     * @param isAdmin 是否為管理員
+     * @param tagName 標籤名稱
+     * @param keyword 關鍵字
+     * @return 分頁的筆記列表
+     */
+    public Page<Note> searchNotesByTagAndKeyword(Pageable pageable, String userEmail,
+                                                 boolean isAdmin, String tagName, String keyword) {
+        if (tagName == null || tagName.trim().isEmpty() ||
+            keyword == null || keyword.trim().isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        if (isAdmin) {
+            // 管理員可以搜尋所有筆記
+            return noteRepository.findByTagNameAndKeyword(tagName.trim(), keyword.trim(), pageable);
+        } else {
+            // 一般使用者只能搜尋自己的筆記
+            return noteRepository.findByUserEmailAndTagNameAndKeyword(userEmail, tagName.trim(), keyword.trim(), pageable);
+        }
+    }
+
+    /**
      * 更新筆記
      *
      * 更新該 ID 筆記，並自動設定更新時間。
@@ -147,25 +222,34 @@ public class NoteService {
      * - 管理員可更新所有筆記
      *
      * @param id 筆記 ID
-     * @param noteDetails 更新的筆記物件
+     * @param updateNoteRequest 更新的筆記請求物件
      * @param userEmail 使用者信箱
      * @param isAdmin 是否為管理員
      * @return 更新的筆記
      */
     @Transactional
-    public Note updateNote(Long id, Note noteDetails, String userEmail, boolean isAdmin) {
+    public Note updateNote(Long id, UpdateNoteRequest updateNoteRequest, String userEmail, boolean isAdmin) {
         // 先檢查筆記是否存在
         Note note = findNoteById(id);
 
         // 如果不是管理員，且不是筆記擁有者，拒絕更新
         if (!hasNotePermission(id, userEmail, isAdmin)) { 
             throw new AccessDeniedException("您沒有權限更新此筆記");
-        }   
+        }
 
-        note.setTitle(noteDetails.getTitle());
-        note.setContent(noteDetails.getContent());
+        // 更新筆記資料
+        note.setTitle(updateNoteRequest.getTitle());
+        note.setContent(updateNoteRequest.getContent());
+
+        // 處理標籤
+        Set<String> updateNoteTags = updateNoteRequest.getTagNames();
+        Set<Tag> noteTags = tagService.createOrGetTags(updateNoteTags);
+        note.setTags(noteTags);
+
+        // 更新時間戳記
         note.setUpdatedAt(LocalDateTime.now());
-        
+
+        // 保存
         return noteRepository.save(note);
     }
 
