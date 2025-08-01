@@ -47,7 +47,7 @@ graph TB
         subgraph "控制層"
             AC[AuthController<br/>認證端點]
             NC[NotesController<br/>筆記端點]
-            TC[TagController<br/>標籤端點]
+            TestC[TestController<br/>測試端點]
         end
         
         subgraph "過濾器層"
@@ -86,11 +86,11 @@ graph TB
     JF --> TF
     TF --> AC
     TF --> NC
-    TF --> TC
+    TF --> TestC
     
     AC --> AS
     NC --> NS
-    TC --> TS
+    NC -.-> TS
     
     AS --> UR
     NS --> NR
@@ -119,7 +119,7 @@ graph TB
     classDef database fill:#fff3e0
     classDef relation fill:#f0f0f0
     
-    class AC,NC,TC controller
+    class AC,NC,TestC controller
     class AS,NS,TS service
     class UR,NR,TR,ALR repository
     class DB,UT,NT,TT,ALT database
@@ -147,6 +147,7 @@ sequenceDiagram
     
     par 筆記與標籤處理
         NC->>NS: createNote(noteData, tags)
+        NS->>NS: 呼叫 TagService 處理標籤
         NS->>TR: 檢查標籤是否存在
         TR->>DB: SELECT tags
         DB-->>TR: 標籤資料
