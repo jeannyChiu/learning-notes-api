@@ -91,9 +91,10 @@ const apiService = {
     getCurrentUser: () => apiService.request('/auth/me'),
 
     // Notes endpoints
-    getNotes: (page = 0, size = 10, search = '') => {
+    getNotes: (page = 0, size = 10, search = '', tag = '') => {
         const searchParam = search ? `&search=${encodeURIComponent(search)}` : '';
-        return apiService.request(`/notes?page=${page}&size=${size}${searchParam}`);
+        const tagParam = tag ? `&tag=${encodeURIComponent(tag)}` : '';
+        return apiService.request(`/notes?page=${page}&size=${size}${searchParam}${tagParam}`);
     },
     
     getNote: (id) => apiService.request(`/notes/${id}`),
@@ -442,13 +443,25 @@ const AuthForm = ({ isLogin, onToggle, onSuccess }) => {
 };
 
 // Note Form Component
-const NoteForm = ({ note, onSubmit, onCancel }) => {
+const NoteForm = ({ note, onSubmit, onCancel, allTags = [] }) => {
     const [formData, setFormData] = useState({
         title: note?.title || '',
         content: note?.content || '',
     });
+    const [tags, setTags] = useState(note?.tags?.map(tag => tag.name) || []);
+    const [tagInput, setTagInput] = useState('');
+    const [showSuggestions, setShowSuggestions] = useState(false);
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
+    
+    // Get filtered suggestions based on input
+    const getSuggestions = () => {
+        if (!tagInput.trim()) return [];
+        return allTags.filter(tag => 
+            !tags.includes(tag) && 
+            tag.toLowerCase().includes(tagInput.toLowerCase())
+        );
+    };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -458,13 +471,47 @@ const NoteForm = ({ note, onSubmit, onCancel }) => {
         }
     };
 
+    const handleAddTag = (e, tagToAdd = null) => {
+        e.preventDefault();
+        const trimmedTag = (tagToAdd || tagInput).trim();
+        if (trimmedTag && !tags.includes(trimmedTag)) {
+            setTags([...tags, trimmedTag]);
+            setTagInput('');
+            setShowSuggestions(false);
+        }
+    };
+
+    const handleRemoveTag = (tagToRemove) => {
+        setTags(tags.filter(tag => tag !== tagToRemove));
+    };
+
+    const handleTagInputKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            handleAddTag(e);
+        } else if (e.key === 'Escape') {
+            setShowSuggestions(false);
+        }
+    };
+    
+    const handleTagInputChange = (e) => {
+        setTagInput(e.target.value);
+        setShowSuggestions(e.target.value.trim().length > 0);
+    };
+    
+    const handleSelectSuggestion = (tag) => {
+        setTags([...tags, tag]);
+        setTagInput('');
+        setShowSuggestions(false);
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         setErrors({});
 
         try {
-            await onSubmit(formData);
+            await onSubmit({ ...formData, tagNames: tags });
         } catch (error) {
             setErrors({ general: error.message });
         } finally {
@@ -500,6 +547,78 @@ const NoteForm = ({ note, onSubmit, onCancel }) => {
                 )}
             </div>
 
+            {/* Tags Input */}
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tags
+                </label>
+                
+                {/* Display existing tags */}
+                {tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                        {tags.map((tag, index) => (
+                            <span 
+                                key={index}
+                                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                            >
+                                <i className="fas fa-tag mr-1"></i>
+                                {tag}
+                                <button
+                                    type="button"
+                                    onClick={() => handleRemoveTag(tag)}
+                                    className="ml-1 hover:text-blue-900"
+                                >
+                                    <i className="fas fa-times"></i>
+                                </button>
+                            </span>
+                        ))}
+                    </div>
+                )}
+                
+                {/* Tag input field */}
+                <div className="relative">
+                    <div className="flex gap-2">
+                        <input
+                            type="text"
+                            value={tagInput}
+                            onChange={handleTagInputChange}
+                            onKeyDown={handleTagInputKeyDown}
+                            onFocus={() => tagInput.trim() && setShowSuggestions(true)}
+                            onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                            placeholder="Add a tag and press Enter"
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                        />
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={handleAddTag}
+                            disabled={!tagInput.trim()}
+                        >
+                            <i className="fas fa-plus"></i>
+                        </Button>
+                    </div>
+                    
+                    {/* Custom dropdown suggestions */}
+                    {showSuggestions && getSuggestions().length > 0 && (
+                        <div className="absolute z-10 w-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 max-h-48 overflow-y-auto">
+                            {getSuggestions().map(tag => (
+                                <button
+                                    key={tag}
+                                    type="button"
+                                    onClick={() => handleSelectSuggestion(tag)}
+                                    className="w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none transition-colors first:rounded-t-lg last:rounded-b-lg"
+                                >
+                                    <span className="flex items-center">
+                                        <i className="fas fa-tag mr-2 text-gray-400"></i>
+                                        {tag}
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+
             {errors.general && (
                 <div className="text-red-600 text-sm">
                     {errors.general}
@@ -519,7 +638,7 @@ const NoteForm = ({ note, onSubmit, onCancel }) => {
 };
 
 // Note Card Component
-const NoteCard = ({ note, onEdit, onDelete }) => {
+const NoteCard = ({ note, onEdit, onDelete, onTagClick }) => {
     const [showActions, setShowActions] = useState(false);
 
     const formatDate = (dateString) => {
@@ -574,6 +693,22 @@ const NoteCard = ({ note, onEdit, onDelete }) => {
             <p className="text-gray-600 mb-4 line-clamp-3">
                 {note.content}
             </p>
+            
+            {/* Tags */}
+            {note.tags && note.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                    {note.tags.map(tag => (
+                        <button
+                            key={tag.id}
+                            onClick={() => onTagClick && onTagClick(tag.name)}
+                            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors"
+                        >
+                            <i className="fas fa-tag mr-1"></i>
+                            {tag.name}
+                        </button>
+                    ))}
+                </div>
+            )}
             
             <div className="flex items-center text-sm text-gray-500">
                 <i className="fas fa-clock mr-1"></i>
@@ -667,6 +802,9 @@ const NotesDashboard = ({ user, onLogout }) => {
     const [editingNote, setEditingNote] = useState(null);
     const [toast, setToast] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedTag, setSelectedTag] = useState('');
+    const [allTags, setAllTags] = useState([]);
+    const allTagsSetRef = React.useRef(new Set()); // 使用 useRef 來持久化存儲標籤
     const [currentPage, setCurrentPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
     const [totalElements, setTotalElements] = useState(0);
@@ -677,15 +815,26 @@ const NotesDashboard = ({ user, onLogout }) => {
         setToast({ message, type });
     };
 
-    const loadNotes = useCallback(async (page = 0, searchKeyword = '') => {
+    const loadNotes = useCallback(async (page = 0, searchKeyword = '', tag = '') => {
         try {
             setLoading(true);
-            const response = await apiService.getNotes(page, pageSize, searchKeyword);
+            const response = await apiService.getNotes(page, pageSize, searchKeyword, tag);
             
             setNotes(response.content || []);
             setCurrentPage(response.number || 0);
             setTotalPages(response.totalPages || 0);
             setTotalElements(response.totalElements || 0);
+            
+            // Extract all unique tags from current page
+            // Note: In a real app, we'd have a separate API to get all tags
+            response.content?.forEach(note => {
+                note.tags?.forEach(tag => {
+                    allTagsSetRef.current.add(tag.name);
+                });
+            });
+            
+            // Update the allTags state with all accumulated tags
+            setAllTags(Array.from(allTagsSetRef.current).sort());
         } catch (error) {
             showToast('Failed to load notes', 'error');
         } finally {
@@ -693,22 +842,45 @@ const NotesDashboard = ({ user, onLogout }) => {
         }
     }, [pageSize]);
 
+    // 初始化時載入前幾頁以收集標籤
+    const initializeTags = useCallback(async () => {
+        try {
+            // 載入前3頁的筆記以收集更多標籤
+            for (let page = 0; page < 3; page++) {
+                const response = await apiService.getNotes(page, pageSize, '', '');
+                if (response.content) {
+                    response.content.forEach(note => {
+                        note.tags?.forEach(tag => {
+                            allTagsSetRef.current.add(tag.name);
+                        });
+                    });
+                }
+                // 如果沒有更多頁面，提前結束
+                if (page >= response.totalPages - 1) break;
+            }
+            setAllTags(Array.from(allTagsSetRef.current).sort());
+        } catch (error) {
+            console.error('Failed to initialize tags:', error);
+        }
+    }, [pageSize]);
+
     useEffect(() => {
-        loadNotes(0, searchTerm);
+        initializeTags();
+        loadNotes(0, searchTerm, selectedTag);
     }, []);
 
-    // 搜尋功能：當搜尋詞變化時重新載入筆記（重置到第一頁）
+    // 搜尋功能：當搜尋詞或標籤變化時重新載入筆記（重置到第一頁）
     useEffect(() => {
         const delayedSearch = setTimeout(() => {
-            loadNotes(0, searchTerm);
+            loadNotes(0, searchTerm, selectedTag);
         }, 300); // 300ms 延遲以避免過度搜尋
 
         return () => clearTimeout(delayedSearch);
-    }, [searchTerm, loadNotes]);
+    }, [searchTerm, selectedTag, loadNotes]);
 
     const handlePageChange = (newPage) => {
         if (newPage >= 0 && newPage < totalPages) {
-            loadNotes(newPage, searchTerm);
+            loadNotes(newPage, searchTerm, selectedTag);
         }
     };
 
@@ -716,8 +888,15 @@ const NotesDashboard = ({ user, onLogout }) => {
         try {
             await apiService.createNote(noteData);
             setShowNoteForm(false);
+            
+            // 將新標籤加入到 allTagsSetRef
+            if (noteData.tagNames) {
+                noteData.tagNames.forEach(tag => allTagsSetRef.current.add(tag));
+                setAllTags(Array.from(allTagsSetRef.current).sort());
+            }
+            
             // 創建後回到第一頁顯示最新筆記
-            loadNotes(0, searchTerm);
+            loadNotes(0, searchTerm, selectedTag);
             showToast('Note created successfully!');
         } catch (error) {
             throw error;
@@ -728,8 +907,15 @@ const NotesDashboard = ({ user, onLogout }) => {
         try {
             await apiService.updateNote(editingNote.id, noteData);
             setEditingNote(null);
+            
+            // 將新標籤加入到 allTagsSetRef
+            if (noteData.tagNames) {
+                noteData.tagNames.forEach(tag => allTagsSetRef.current.add(tag));
+                setAllTags(Array.from(allTagsSetRef.current).sort());
+            }
+            
             // 更新後重新載入當前頁
-            loadNotes(currentPage, searchTerm);
+            loadNotes(currentPage, searchTerm, selectedTag);
             showToast('Note updated successfully!');
         } catch (error) {
             throw error;
@@ -756,9 +942,9 @@ const NotesDashboard = ({ user, onLogout }) => {
             // 刪除後檢查是否需要調整頁碼
             if (notes.length === 1 && currentPage > 0) {
                 // 如果當前頁只有一筆且不是第一頁，回到上一頁
-                loadNotes(currentPage - 1, searchTerm);
+                loadNotes(currentPage - 1, searchTerm, selectedTag);
             } else {
-                loadNotes(currentPage, searchTerm);
+                loadNotes(currentPage, searchTerm, selectedTag);
             }
             showToast('Note deleted successfully!');
             setDeleteConfirm({ isOpen: false, noteId: null, noteTitle: '' });
@@ -795,18 +981,54 @@ const NotesDashboard = ({ user, onLogout }) => {
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Search and Actions */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
-                    <div className="flex-1 max-w-lg">
-                        <div className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <i className="fas fa-search text-gray-400"></i>
+                    <div className="flex-1">
+                        <div className="flex flex-col sm:flex-row gap-3">
+                            {/* Search Input */}
+                            <div className="relative flex-1 max-w-md">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i className="fas fa-search text-gray-400"></i>
+                                </div>
+                                <input
+                                    type="text"
+                                    placeholder="Search notes..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                />
                             </div>
-                            <input
-                                type="text"
-                                placeholder="Search notes..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            />
+                            
+                            {/* Tag Filter */}
+                            <div className="relative">
+                                <select
+                                    value={selectedTag}
+                                    onChange={(e) => setSelectedTag(e.target.value)}
+                                    className="appearance-none px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                                >
+                                    <option value="">All Tags</option>
+                                    {allTags.map(tag => (
+                                        <option key={tag} value={tag}>
+                                            {tag}
+                                        </option>
+                                    ))}
+                                </select>
+                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                                    <i className="fas fa-chevron-down text-gray-400"></i>
+                                </div>
+                            </div>
+                            
+                            {/* Clear Filters */}
+                            {(searchTerm || selectedTag) && (
+                                <Button 
+                                    variant="ghost" 
+                                    onClick={() => {
+                                        setSearchTerm('');
+                                        setSelectedTag('');
+                                    }}
+                                >
+                                    <i className="fas fa-times mr-2"></i>
+                                    Clear
+                                </Button>
+                            )}
                         </div>
                     </div>
                     
@@ -849,6 +1071,7 @@ const NotesDashboard = ({ user, onLogout }) => {
                                     note={note}
                                     onEdit={setEditingNote}
                                     onDelete={handleDeleteNote}
+                                    onTagClick={(tagName) => setSelectedTag(tagName)}
                                 />
                             ))}
                         </div>
@@ -879,6 +1102,7 @@ const NotesDashboard = ({ user, onLogout }) => {
                 <NoteForm
                     onSubmit={handleCreateNote}
                     onCancel={() => setShowNoteForm(false)}
+                    allTags={allTags}
                 />
             </Modal>
 
@@ -891,6 +1115,7 @@ const NotesDashboard = ({ user, onLogout }) => {
                     note={editingNote}
                     onSubmit={handleUpdateNote}
                     onCancel={() => setEditingNote(null)}
+                    allTags={allTags}
                 />
             </Modal>
 
