@@ -90,12 +90,11 @@ graph TB
     
     AC --> AS
     NC --> NS
-    NC -.-> TS
     
     AS --> UR
     NS --> NR
+    NS --> TS
     TS --> TR
-    NS -.-> TR
     
     LA -.->|記錄請求/回應| ALR
     
