@@ -7,7 +7,9 @@ import com.jeannychiu.learningnotesapi.model.Note;
 import com.jeannychiu.learningnotesapi.model.Tag;
 import com.jeannychiu.learningnotesapi.repository.NoteRepository;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import java.time.LocalDateTime;
 import java.util.Set;
@@ -121,12 +123,19 @@ public class NoteService {
      * @return 分頁的筆記列表
      */
     public Page<Note> getAllNotes(Pageable pageable, String userEmail, boolean isAdmin) {
+        // 分頁的筆記列表以更新時間最新排序
+        PageRequest sortedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by(Sort.Direction.DESC, "updatedAt")
+        );
+
         if (isAdmin) {
             // 管理員可以查看所有筆記
-            return noteRepository.findAll(pageable);
+            return noteRepository.findAll(sortedPageable);
         } else {
             // 一般使用者只能查看自己的筆記
-            return noteRepository.findByUserEmail(userEmail, pageable);
+            return noteRepository.findByUserEmail(userEmail, sortedPageable);
         }
     }
 
@@ -145,16 +154,23 @@ public class NoteService {
      * @return 分頁的筆記列表
      */
     public Page<Note> searchNotes(Pageable pageable, String userEmail, boolean isAdmin, String keyword) {
+        // 分頁的筆記列表以更新時間最新排序
+        Pageable sortedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by(Sort.Direction.DESC, "updatedAt")
+        );
+
         if (keyword == null || keyword.trim().isEmpty()) {
-            return getAllNotes(pageable, userEmail, isAdmin);
+            return getAllNotes(sortedPageable, userEmail, isAdmin);
         }
         
         if (isAdmin) {
             // 管理員可以搜尋所有筆記
-            return noteRepository.findByKeyword(keyword.trim(), pageable);
+            return noteRepository.findByKeyword(keyword.trim(), sortedPageable);
         } else {
             // 一般使用者只能搜尋自己的筆記
-            return noteRepository.findByUserEmailAndKeyword(userEmail, keyword.trim(), pageable);
+            return noteRepository.findByUserEmailAndKeyword(userEmail, keyword.trim(), sortedPageable);
         }
     }
 
@@ -171,16 +187,23 @@ public class NoteService {
      * @return 分頁的筆記列表
      */
     public Page<Note> searchNotesByTag(Pageable pageable, String userEmail, boolean isAdmin, String tagName) {
+        // 分頁的筆記列表以更新時間最新排序
+        Pageable sortedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by(Sort.Direction.DESC, "updatedAt")
+        );
+
         if (tagName == null || tagName.trim().isEmpty()) {
-            return Page.empty(pageable);
+            return Page.empty(sortedPageable);
         }
 
         if (isAdmin) {
             // 管理員可以搜尋所有筆記
-            return noteRepository.findByTagName(tagName.trim(), pageable);
+            return noteRepository.findByTagName(tagName.trim(), sortedPageable);
         } else {
             // 一般使用者只能搜尋自己的筆記
-            return noteRepository.findByUserEmailAndTagName(userEmail, tagName.trim(), pageable);
+            return noteRepository.findByUserEmailAndTagName(userEmail, tagName.trim(), sortedPageable);
         }
     }
 
@@ -199,17 +222,24 @@ public class NoteService {
      */
     public Page<Note> searchNotesByTagAndKeyword(Pageable pageable, String userEmail,
                                                  boolean isAdmin, String tagName, String keyword) {
+        // 分頁的筆記列表以更新時間最新排序
+        Pageable sortedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by(Sort.Direction.DESC, "updatedAt")
+        );
+
         if (tagName == null || tagName.trim().isEmpty() ||
             keyword == null || keyword.trim().isEmpty()) {
-            return Page.empty(pageable);
+            return Page.empty(sortedPageable);
         }
 
         if (isAdmin) {
             // 管理員可以搜尋所有筆記
-            return noteRepository.findByTagNameAndKeyword(tagName.trim(), keyword.trim(), pageable);
+            return noteRepository.findByTagNameAndKeyword(tagName.trim(), keyword.trim(), sortedPageable);
         } else {
             // 一般使用者只能搜尋自己的筆記
-            return noteRepository.findByUserEmailAndTagNameAndKeyword(userEmail, tagName.trim(), keyword.trim(), pageable);
+            return noteRepository.findByUserEmailAndTagNameAndKeyword(userEmail, tagName.trim(), keyword.trim(), sortedPageable);
         }
     }
 
