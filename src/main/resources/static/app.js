@@ -712,7 +712,7 @@ const NoteCard = ({ note, onEdit, onDelete, onTagClick }) => {
             
             <div className="flex items-center text-sm text-gray-500">
                 <i className="fas fa-clock mr-1"></i>
-                {formatDate(note.createdAt)}
+                {formatDate(note.updatedAt)}
             </div>
         </Card>
     );
