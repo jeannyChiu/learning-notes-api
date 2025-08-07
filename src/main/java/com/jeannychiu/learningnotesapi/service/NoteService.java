@@ -1,6 +1,8 @@
 package com.jeannychiu.learningnotesapi.service;
 
 import com.jeannychiu.learningnotesapi.dto.CreateNoteRequest;
+import com.jeannychiu.learningnotesapi.dto.SearchSuggestionsResponse;
+import com.jeannychiu.learningnotesapi.dto.SuggestionItem;
 import com.jeannychiu.learningnotesapi.dto.UpdateNoteRequest;
 import com.jeannychiu.learningnotesapi.exception.NoteNotFoundException;
 import com.jeannychiu.learningnotesapi.model.Note;
@@ -12,6 +14,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.springframework.stereotype.Service;
@@ -240,6 +245,102 @@ public class NoteService {
         } else {
             // 一般使用者只能搜尋自己的筆記
             return noteRepository.findByUserEmailAndTagNameAndKeyword(userEmail, tagName.trim(), keyword.trim(), sortedPageable);
+        }
+    }
+
+    /**
+     * 根據關鍵字取得搜尋建議列表
+     *
+     * 從筆記標題中提取包含關鍵字的詞組作為搜尋建議。
+     * 會自動去除重複的建議，並限制最少輸入 2 個字元。
+     *
+     * - 一般使用者：只能從自己的筆記標題中取得建議
+     * - 管理員：可從所有筆記標題中取得建議
+     *
+     * @param keyword 搜尋關鍵字 (至少 2 個字元)
+     * @param userEmail 使用者信箱
+     * @param isAdmin 是否為管理員
+     * @param limit 返回建議的最大數量 (null時預設為 5)
+     * @return 搜尋建議回應物件
+     */
+    public SearchSuggestionsResponse getSearchSuggestions(String keyword, String userEmail,
+                                                          boolean isAdmin, Integer limit) {
+        // 檢查關鍵字長度 (至少 2 字元)
+        if (keyword == null || keyword.length() < 2) {
+            SearchSuggestionsResponse response = new SearchSuggestionsResponse();
+            response.setSuggestions(new ArrayList<>());
+            return response;
+        }
+
+        // 設定 limit 預設值
+        int actualLimit = (limit != null && limit > 0) ? limit : 5;
+
+        List<Object[]> results;
+
+        if (isAdmin) {
+            // 管理員可以搜尋所有筆記
+            results = noteRepository.findSuggestionsForAdmin(keyword.trim(), actualLimit);
+        } else {
+            // 一般使用者只能搜尋自己的筆記
+            results = noteRepository.findSuggestionsForUser(userEmail, keyword.trim(), actualLimit);
+        }
+
+        // 轉換資料
+        Set<String> suggestions = new LinkedHashSet<>();
+
+        for (Object[] result : results) {
+            String title = (String) result[1];
+
+            if (title == null || title.trim().isEmpty()) {
+                continue;
+            }
+
+            String suggestion = extractKeywordSuggestion(title, keyword);
+            if (suggestion != null) {
+                suggestions.add(suggestion);
+            }
+        }
+
+        List<SuggestionItem> items = suggestions.stream()
+                .limit(actualLimit)
+                .map(word -> {
+                    SuggestionItem item = new SuggestionItem();
+                    item.setId(0L);
+                    item.setTitle(word);
+                    item.setType("keyword");
+                    item.setMatchedText(word);
+                    return item;
+                })
+                .toList();
+
+        SearchSuggestionsResponse response = new SearchSuggestionsResponse();
+        response.setSuggestions(items);
+
+        return response;
+    }
+
+    /**
+     * 從標題中提取包含關鍵字的詞組
+     *
+     * 找到關鍵字在標題中的位置，並提取從關鍵字開始到下一個空格 (或標題結尾) 的完整詞組。
+     *
+     * @param title 筆記標題
+     * @param keyword 搜尋關鍵字
+     * @return 提取的關鍵字詞組，如果標題不包含關鍵字則返回null
+     */
+    private String extractKeywordSuggestion(String title, String keyword) {
+        String lowerTitle = title.toLowerCase();
+        String lowerKeyword = keyword.toLowerCase();
+
+        int index = lowerTitle.indexOf(lowerKeyword);
+        if (index == -1) return null;
+
+        // 找到下一個空格的位置
+        int spaceIndex = lowerTitle.indexOf(' ', index + lowerKeyword.length());
+        if (spaceIndex == -1) {
+            return title.substring(index);
+        } else {
+            return title.substring(index, spaceIndex);
         }
     }
 

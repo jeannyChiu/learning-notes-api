@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
+
 /**
  * 筆記資料存取層
  *
@@ -117,4 +119,43 @@ public interface NoteRepository extends JpaRepository<Note, Long> {
     Page<Note> findByTagNameAndKeyword(@Param("tagName") String tagName,
                                        @Param("keyword") String keyword,
                                        Pageable pageable);
+
+    /**
+     * 根據關鍵字搜尋筆記標題並返回搜尋建議
+     *
+     * 使用 GROUP BY 去除重複的標題，並按更新時間降序排序。
+     *
+     * @param userEmail 使用者信箱
+     * @param keyword 搜尋關鍵字
+     * @param limit 返回結果的最大數量
+     * @return Object[]陣列列表，每個陣列包含 [id, title, type, matched_text, updated_at]
+     */
+    @Query(value =
+            "  SELECT MIN(n.id), n.title, 'title' as type, n.title as matched_text, MAX(n.updated_at) " +
+            "  FROM note n " +
+            "  WHERE n.user_email = :userEmail " +
+            "  AND LOWER(n.title) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+            "  GROUP BY n.title " +
+            "  ORDER BY MAX(updated_at) DESC LIMIT :limit",
+            nativeQuery = true)
+    List<Object[]> findSuggestionsForUser(@Param("userEmail") String userEmail,
+                                          @Param("keyword") String keyword,
+                                          @Param("limit") int limit);
+
+    /**
+     * 根據關鍵字搜尋筆記標題並返回搜尋建議 (管理員專用)
+     *
+     * @param keyword 搜尋關鍵字
+     * @param limit 返回結果的最大數量
+     * @return Object[]陣列列表，每個陣列包含 [id, title, type, matched_text, updated_at]
+     */
+    @Query(value =
+            "  SELECT MIN(n.id), n.title, 'title' as type, n.title as matched_text, MAX(n.updated_at) " +
+            "  FROM note n " +
+            "  WHERE LOWER(n.title) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+            "  GROUP BY n.title " +
+            "  ORDER BY MAX(updated_at) DESC LIMIT :limit",
+            nativeQuery = true)
+    List<Object[]> findSuggestionsForAdmin(@Param("keyword") String keyword,
+                                           @Param("limit") int limit);
 }
