@@ -112,6 +112,10 @@ const apiService = {
     deleteNote: (id) => apiService.request(`/notes/${id}`, {
         method: 'DELETE',
     }),
+    
+    // Search suggestions endpoint
+    getSearchSuggestions: (query, limit = 5) => 
+        apiService.request(`/notes/suggestions?q=${encodeURIComponent(query)}&limit=${limit}`),
 };
 
 // Modern Button Component
@@ -810,6 +814,13 @@ const NotesDashboard = ({ user, onLogout }) => {
     const [totalElements, setTotalElements] = useState(0);
     const [pageSize] = useState(9); // 每頁顯示9筆，適合3列網格
     const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, noteId: null, noteTitle: '' });
+    
+    // Search suggestions states
+    const [searchInput, setSearchInput] = useState('');
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [searchSuggestions, setSearchSuggestions] = useState([]);
+    const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+    const searchDebounceRef = React.useRef(null);
 
     const showToast = (message, type = 'success') => {
         setToast({ message, type });
@@ -877,6 +888,54 @@ const NotesDashboard = ({ user, onLogout }) => {
 
         return () => clearTimeout(delayedSearch);
     }, [searchTerm, selectedTag, loadNotes]);
+    
+    // Fetch search suggestions with debounce
+    const fetchSearchSuggestions = useCallback(async (query) => {
+        if (query.trim().length < 2) {
+            setSearchSuggestions([]);
+            setShowSuggestions(false);
+            return;
+        }
+        
+        setLoadingSuggestions(true);
+        try {
+            const response = await apiService.getSearchSuggestions(query);
+            if (response && response.suggestions) {
+                setSearchSuggestions(response.suggestions);
+                setShowSuggestions(response.suggestions.length > 0);
+            }
+        } catch (error) {
+            console.error('Failed to fetch suggestions:', error);
+            setSearchSuggestions([]);
+            setShowSuggestions(false);
+        } finally {
+            setLoadingSuggestions(false);
+        }
+    }, []);
+    
+    // Handle search input changes with debounce
+    const handleSearchInputChange = (e) => {
+        const value = e.target.value;
+        setSearchInput(value);
+        
+        // Clear previous debounce timer
+        if (searchDebounceRef.current) {
+            clearTimeout(searchDebounceRef.current);
+        }
+        
+        // Set new debounce timer
+        searchDebounceRef.current = setTimeout(() => {
+            fetchSearchSuggestions(value);
+        }, 300);
+    };
+    
+    // Handle suggestion selection
+    const handleSelectSuggestion = (suggestion) => {
+        setSearchInput(suggestion.title);
+        setSearchTerm(suggestion.title);
+        setShowSuggestions(false);
+        setSearchSuggestions([]);
+    };
 
     const handlePageChange = (newPage) => {
         if (newPage >= 0 && newPage < totalPages) {
@@ -983,7 +1042,7 @@ const NotesDashboard = ({ user, onLogout }) => {
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
                     <div className="flex-1">
                         <div className="flex flex-col sm:flex-row gap-3">
-                            {/* Search Input */}
+                            {/* Search Input with Suggestions */}
                             <div className="relative flex-1 max-w-md">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                     <i className="fas fa-search text-gray-400"></i>
@@ -991,10 +1050,58 @@ const NotesDashboard = ({ user, onLogout }) => {
                                 <input
                                     type="text"
                                     placeholder="Search notes..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    value={searchInput}
+                                    onChange={handleSearchInputChange}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            setSearchTerm(searchInput);
+                                            setShowSuggestions(false);
+                                        } else if (e.key === 'Escape') {
+                                            setShowSuggestions(false);
+                                        }
+                                    }}
+                                    onFocus={() => {
+                                        if (searchInput.trim().length >= 2 && searchSuggestions.length > 0) {
+                                            setShowSuggestions(true);
+                                        }
+                                    }}
+                                    onBlur={() => {
+                                        // Delay to allow clicking on suggestions
+                                        setTimeout(() => setShowSuggestions(false), 200);
+                                    }}
                                     className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 />
+                                
+                                {/* Search Suggestions Dropdown */}
+                                {showSuggestions && (
+                                    <div className="absolute z-10 w-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 max-h-60 overflow-y-auto">
+                                        {loadingSuggestions ? (
+                                            <div className="px-4 py-3 text-center">
+                                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mx-auto"></div>
+                                            </div>
+                                        ) : searchSuggestions.length > 0 ? (
+                                            searchSuggestions.map((suggestion) => (
+                                                <button
+                                                    key={`${suggestion.type}-${suggestion.id}`}
+                                                    type="button"
+                                                    onClick={() => handleSelectSuggestion(suggestion)}
+                                                    className="w-full px-4 py-3 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none transition-colors first:rounded-t-lg last:rounded-b-lg border-b border-gray-100 last:border-b-0"
+                                                >
+                                                    <div className="flex items-start">
+                                                        <i className="fas fa-search text-gray-400 mt-0.5 mr-3"></i>
+                                                        <div className="flex-1">
+                                                            <div className="font-medium text-gray-900">{suggestion.title}</div>
+                                                        </div>
+                                                    </div>
+                                                </button>
+                                            ))
+                                        ) : (
+                                            <div className="px-4 py-3 text-sm text-gray-500 text-center">
+                                                No suggestions found
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                             
                             {/* Tag Filter */}
@@ -1022,7 +1129,10 @@ const NotesDashboard = ({ user, onLogout }) => {
                                     variant="ghost" 
                                     onClick={() => {
                                         setSearchTerm('');
+                                        setSearchInput('');
                                         setSelectedTag('');
+                                        setSearchSuggestions([]);
+                                        setShowSuggestions(false);
                                     }}
                                 >
                                     <i className="fas fa-times mr-2"></i>

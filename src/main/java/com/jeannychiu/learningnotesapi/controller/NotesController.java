@@ -2,6 +2,7 @@ package com.jeannychiu.learningnotesapi.controller;
 
 import com.jeannychiu.learningnotesapi.constant.RoleConstants;
 import com.jeannychiu.learningnotesapi.dto.CreateNoteRequest;
+import com.jeannychiu.learningnotesapi.dto.SearchSuggestionsResponse;
 import com.jeannychiu.learningnotesapi.dto.UpdateNoteRequest;
 import com.jeannychiu.learningnotesapi.model.Note;
 import com.jeannychiu.learningnotesapi.service.NoteService;
@@ -165,5 +166,31 @@ public class NotesController {
         noteService.deleteNote(id, userEmail, isAdmin);
         
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * 取得搜尋關鍵字建議
+     *
+     * 根據使用者輸入的關鍵字，從筆記標題中提取相關的關鍵字建議。
+     * 支援最少2個字元的搜尋，並去除重複的建議。
+     *
+     * @param q 搜尋關鍵字 (至少2個字元)
+     * @param limit 返回建議的最大數量 (選填，預設值：5)
+     * @param authentication Spring Security 的認證物件
+     * @return 搜尋建議回應物件，HTTP 狀態碼 200
+     */
+    @GetMapping("/suggestions")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    public ResponseEntity<SearchSuggestionsResponse> getSearchSuggestions (
+            @RequestParam String q,
+            @RequestParam(required = false) Integer limit,
+            Authentication authentication) {
+        String userEmail = authentication.getName();
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals(RoleConstants.ROLE_ADMIN));
+
+        SearchSuggestionsResponse response = noteService.getSearchSuggestions(q, userEmail, isAdmin, limit);
+
+        return ResponseEntity.ok(response);
     }
 }
