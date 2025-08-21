@@ -41,6 +41,9 @@ public class Note {
     @Column(name = "user_email")
     private String userEmail;
 
+    @Version
+    private Integer version;
+
     // 加入 tags 屬性
     @ManyToMany
     @JoinTable(

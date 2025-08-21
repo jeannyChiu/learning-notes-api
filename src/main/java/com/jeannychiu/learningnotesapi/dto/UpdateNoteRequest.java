@@ -1,6 +1,7 @@
 package com.jeannychiu.learningnotesapi.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -13,6 +14,9 @@ public class UpdateNoteRequest {
 
     @Size(max = 500, message = "內容不能超過 500 字")
     private String content;
+
+    @NotNull
+    private Integer version;
 
     private Set<String> tagNames;
 }

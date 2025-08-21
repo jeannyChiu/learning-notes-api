@@ -8,10 +8,8 @@ import com.jeannychiu.learningnotesapi.exception.NoteNotFoundException;
 import com.jeannychiu.learningnotesapi.model.Note;
 import com.jeannychiu.learningnotesapi.model.Tag;
 import com.jeannychiu.learningnotesapi.repository.NoteRepository;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.data.domain.*;
 import org.springframework.security.access.AccessDeniedException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -137,10 +135,14 @@ public class NoteService {
 
         if (isAdmin) {
             // 管理員可以查看所有筆記
-            return noteRepository.findAll(sortedPageable);
+            Page<Long> idsPage = noteRepository.findAllNoteIds(sortedPageable);
+
+            return convertIdsPageToNotesPage(idsPage, sortedPageable);
         } else {
             // 一般使用者只能查看自己的筆記
-            return noteRepository.findByUserEmail(userEmail, sortedPageable);
+            Page<Long> idsPage = noteRepository.findAllNoteIdsByUserEmail(userEmail, sortedPageable);
+
+            return convertIdsPageToNotesPage(idsPage, sortedPageable);
         }
     }
 
@@ -172,10 +174,14 @@ public class NoteService {
         
         if (isAdmin) {
             // 管理員可以搜尋所有筆記
-            return noteRepository.findByKeyword(keyword.trim(), sortedPageable);
+            Page<Long> idsPage = noteRepository.findByKeyword(keyword, sortedPageable);
+
+            return convertIdsPageToNotesPage(idsPage, sortedPageable);
         } else {
             // 一般使用者只能搜尋自己的筆記
-            return noteRepository.findByUserEmailAndKeyword(userEmail, keyword.trim(), sortedPageable);
+            Page<Long> idsPage = noteRepository.findByUserEmailAndKeyword(userEmail, keyword, sortedPageable);
+
+            return convertIdsPageToNotesPage(idsPage, sortedPageable);
         }
     }
 
@@ -205,10 +211,14 @@ public class NoteService {
 
         if (isAdmin) {
             // 管理員可以搜尋所有筆記
-            return noteRepository.findByTagName(tagName.trim(), sortedPageable);
+            Page<Long> idsPage = noteRepository.findByTagName(tagName.trim(), sortedPageable);
+
+            return convertIdsPageToNotesPage(idsPage, sortedPageable);
         } else {
             // 一般使用者只能搜尋自己的筆記
-            return noteRepository.findByUserEmailAndTagName(userEmail, tagName.trim(), sortedPageable);
+            Page<Long> idsPage = noteRepository.findByUserEmailAndTagName(userEmail, tagName.trim(), sortedPageable);
+
+            return convertIdsPageToNotesPage(idsPage, sortedPageable);
         }
     }
 
@@ -241,11 +251,28 @@ public class NoteService {
 
         if (isAdmin) {
             // 管理員可以搜尋所有筆記
-            return noteRepository.findByTagNameAndKeyword(tagName.trim(), keyword.trim(), sortedPageable);
+            Page<Long> idsPage = noteRepository.findByTagNameAndKeyword(tagName.trim(), keyword.trim(), sortedPageable);
+
+            return convertIdsPageToNotesPage(idsPage, sortedPageable);
         } else {
             // 一般使用者只能搜尋自己的筆記
-            return noteRepository.findByUserEmailAndTagNameAndKeyword(userEmail, tagName.trim(), keyword.trim(), sortedPageable);
+            Page<Long> idsPage = noteRepository.findByUserEmailAndTagNameAndKeyword(userEmail, tagName.trim(), keyword.trim(), sortedPageable);
+
+            return convertIdsPageToNotesPage(idsPage, sortedPageable);
         }
+    }
+
+    private Page<Note> convertIdsPageToNotesPage(Page<Long> idsPage, Pageable pageable) {
+        // 如果沒有結果，直接返回空的Page
+        if (idsPage.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        // 批量載入完整的筆記資料 (包含 tags)
+        List<Note> notes = noteRepository.findNotesWithTagsByIds(idsPage.toList());
+
+        // 重新組裝成 Page 物件
+        return new PageImpl<>(notes, pageable, idsPage.getTotalElements());
     }
 
     /**
@@ -366,6 +393,10 @@ public class NoteService {
         // 如果不是管理員，且不是筆記擁有者，拒絕更新
         if (!hasNotePermission(id, userEmail, isAdmin)) { 
             throw new AccessDeniedException("您沒有權限更新此筆記");
+        }
+
+        if (note.getVersion() != updateNoteRequest.getVersion()) {
+            throw new OptimisticLockingFailureException("筆記版本不一致");
         }
 
         // 更新筆記資料

@@ -515,7 +515,12 @@ const NoteForm = ({ note, onSubmit, onCancel, allTags = [] }) => {
         setErrors({});
 
         try {
-            await onSubmit({ ...formData, tagNames: tags });
+            const submitData = { ...formData, tagNames: tags };
+            // 如果是編輯現有筆記，加上version字段
+            if (note && note.version !== undefined) {
+                submitData.version = note.version;
+            }
+            await onSubmit(submitData);
         } catch (error) {
             setErrors({ general: error.message });
         } finally {

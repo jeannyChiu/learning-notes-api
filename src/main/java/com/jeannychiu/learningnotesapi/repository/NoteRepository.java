@@ -20,6 +20,24 @@ import java.util.List;
  */
 public interface NoteRepository extends JpaRepository<Note, Long> {
     /**
+     * 取得所有筆記的 IDs (管理員專用)
+     *
+     * @param pageable 分頁參數
+     * @return 筆記ID分頁結果
+     */
+    @Query("SELECT DISTINCT n.id FROM Note n ORDER BY n.updatedAt DESC")
+    Page<Long> findAllNoteIds(Pageable pageable);
+
+    /**
+     * 取得使用者所有筆記的 IDs
+     *
+     * @param pageable 分頁參數
+     * @return 筆記ID分頁結果
+     */
+    @Query("SELECT DISTINCT n.id FROM Note n WHERE n.userEmail = :userEmail ORDER BY n.updatedAt DESC")
+    Page<Long> findAllNoteIdsByUserEmail(@Param("userEmail") String userEmail, Pageable pageable);
+
+    /**
      * 根據使用者信箱查詢筆記
      *
      * @param userEmail 使用者信箱
@@ -38,87 +56,101 @@ public interface NoteRepository extends JpaRepository<Note, Long> {
     boolean existsByIdAndUserEmail(Long id, String userEmail);
 
     /**
-     * 根據標題或內容搜尋使用者的筆記
+     * 根據標題或內容搜尋使用者的筆記ID
      *
      * @param userEmail 使用者信箱
      * @param keyword 關鍵字
      * @param pageable 分頁參數
-     * @return 搜尋的筆記分頁結果
+     * @return 搜尋的筆記ID分頁結果
      */
-    @Query("SELECT n FROM Note n WHERE n.userEmail = :userEmail AND " +
-           "(LOWER(n.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-           "LOWER(n.content) LIKE LOWER(CONCAT('%', :keyword, '%')))")
-    Page<Note> findByUserEmailAndKeyword(@Param("userEmail") String userEmail, 
-                                       @Param("keyword") String keyword, 
-                                       Pageable pageable);
+    @Query("SELECT DISTINCT n.id FROM Note n WHERE n.userEmail = :userEmail AND " +
+            "(LOWER(n.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "LOWER(n.content) LIKE LOWER(CONCAT('%', :keyword, '%'))) ORDER BY n.updatedAt DESC")
+    Page<Long> findByUserEmailAndKeyword(@Param("userEmail") String userEmail,
+                                         @Param("keyword") String keyword,
+                                         Pageable pageable);
 
     /**
-     * 根據標題或內容搜尋筆記 (管理員專用)
+     * 根據標題或內容搜尋筆記ID (管理員專用)
      *
      * @param keyword 關鍵字
      * @param pageable 分頁參數
-     * @return 搜尋的筆記分頁結果
+     * @return 搜尋的筆記ID分頁結果
      */
-    @Query("SELECT n FROM Note n WHERE " +
-           "(LOWER(n.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-           "LOWER(n.content) LIKE LOWER(CONCAT('%', :keyword, '%')))")
-    Page<Note> findByKeyword(@Param("keyword") String keyword, Pageable pageable);
+    @Query("SELECT DISTINCT n.id FROM Note n WHERE " +
+            "(LOWER(n.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "LOWER(n.content) LIKE LOWER(CONCAT('%', :keyword, '%'))) ORDER BY n.updatedAt DESC")
+    Page<Long> findByKeyword(@Param("keyword") String keyword, Pageable pageable);
 
     /**
-     * 根據標籤名稱搜尋使用者的筆記
+     * 根據標籤名稱搜尋使用者的筆記ID
      *
      * @param userEmail 使用者信箱
      * @param tagName 標籤名稱
      * @param pageable 分頁參數
-     * @return 該使用者包含該標籤的筆記分頁結果
+     * @return 該使用者包含該標籤的筆記ID分頁結果
      */
-    @Query("SELECT DISTINCT n FROM Note n JOIN n.tags t WHERE n.userEmail = :userEmail AND t.name = :tagName")
-    Page<Note> findByUserEmailAndTagName(@Param("userEmail") String userEmail,
+    @Query("SELECT DISTINCT n.id FROM Note n JOIN n.tags t WHERE n.userEmail = :userEmail AND t.name = :tagName ORDER BY n.updatedAt DESC")
+    Page<Long> findByUserEmailAndTagName(@Param("userEmail") String userEmail,
                                          @Param("tagName") String tagName,
                                          Pageable pageable);
 
     /**
-     * 根據標籤名稱搜尋筆記 (管理員專用)
+     * 根據標籤名稱搜尋筆記ID (管理員專用)
      *
      * @param tagName 標籤名稱
      * @param pageable 分頁參數
-     * @return 包含該標籤的筆記分頁結果
+     * @return 包含該標籤的筆記ID分頁結果
      */
-    @Query("SELECT DISTINCT n FROM Note n JOIN n.tags t WHERE t.name = :tagName")
-    Page<Note> findByTagName(@Param("tagName") String tagName, Pageable pageable);
+    @Query("SELECT DISTINCT n.id FROM Note n JOIN n.tags t WHERE t.name = :tagName ORDER BY n.updatedAt DESC")
+    Page<Long> findByTagName(@Param("tagName") String tagName, Pageable pageable);
+
+
+
 
     /**
-     * 根據標籤名稱和關鍵字搜尋使用者的筆記
+     * 根據標籤名稱和關鍵字搜尋使用者的筆記ID
      *
      * @param userEmail 使用者信箱
      * @param tagName 標籤名稱
      * @param keyword 關鍵字
      * @param pageable 分頁參數
-     * @return 使用者同時包含該標籤和關鍵字的筆記分頁結果
+     * @return 使用者同時包含該標籤和關鍵字的筆記ID分頁結果
      */
-    @Query("SELECT DISTINCT n FROM Note n JOIN n.tags t WHERE n.userEmail = :userEmail " +
+    @Query("SELECT DISTINCT n.id FROM Note n JOIN n.tags t WHERE n.userEmail = :userEmail " +
             "AND t.name = :tagName " +
             "AND (LOWER(n.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-            "LOWER(n.content) LIKE LOWER(CONCAT('%', :keyword, '%')))")
-    Page<Note> findByUserEmailAndTagNameAndKeyword(@Param("userEmail") String userEmail,
+            "LOWER(n.content) LIKE LOWER(CONCAT('%', :keyword, '%'))) ORDER BY n.updatedAt DESC")
+    Page<Long> findByUserEmailAndTagNameAndKeyword(@Param("userEmail") String userEmail,
                                                    @Param("tagName") String tagName,
                                                    @Param("keyword") String keyword,
                                                    Pageable pageable);
 
+
+
     /**
-     * 根據標籤名稱和關鍵字搜尋使用者的筆記 (管理員專用)
+     * 根據標籤名稱和關鍵字搜尋使用者的筆記ID (管理員專用)
      *
      * @param tagName 標籤名稱
      * @param keyword 關鍵字
      * @param pageable 分頁參數
-     * @return 包含該標籤和關鍵字的筆記分頁結果
+     * @return 包含該標籤和關鍵字的筆記ID分頁結果
      */
-    @Query("SELECT DISTINCT n FROM Note n JOIN n.tags t WHERE t.name = :tagName " +
+    @Query("SELECT DISTINCT n.id FROM Note n JOIN n.tags t WHERE t.name = :tagName " +
             "AND (LOWER(n.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-            "LOWER(n.content) LIKE LOWER(CONCAT('%', :keyword, '%')))")
-    Page<Note> findByTagNameAndKeyword(@Param("tagName") String tagName,
+            "LOWER(n.content) LIKE LOWER(CONCAT('%', :keyword, '%'))) ORDER BY n.updatedAt DESC")
+    Page<Long> findByTagNameAndKeyword(@Param("tagName") String tagName,
                                        @Param("keyword") String keyword,
                                        Pageable pageable);
+
+    /**
+     * 根據筆記ID搜尋使用者的筆記含標籤
+     *
+     * @param ids 筆記ID列表
+     * @return 筆記列表
+     */
+    @Query("SELECT DISTINCT n FROM Note n LEFT JOIN FETCH n.tags t WHERE n.id IN :ids ORDER BY n.updatedAt DESC")
+    List<Note> findNotesWithTagsByIds(@Param("ids") List<Long> ids);
 
     /**
      * 根據關鍵字搜尋筆記標題並返回搜尋建議

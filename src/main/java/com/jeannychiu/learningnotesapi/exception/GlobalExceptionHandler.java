@@ -1,5 +1,7 @@
 package com.jeannychiu.learningnotesapi.exception;
 
+import jakarta.persistence.OptimisticLockException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -99,5 +101,20 @@ public class GlobalExceptionHandler {
         errorResponse.setTimestamp(LocalDateTime.now());
 
         return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler({OptimisticLockException.class, OptimisticLockingFailureException.class})
+    public ResponseEntity<ErrorResponse> handleNoteConflict(RuntimeException ex) {
+        ErrorResponse errorResponse = new ErrorResponse();
+        errorResponse.setStatus(HttpStatus.CONFLICT.value());
+        errorResponse.setMessage("資料已被更新，請重新載入");
+        errorResponse.setTimestamp(LocalDateTime.now());
+        errorResponse.setCode("CONFLICT");
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("resource","note");
+        errorResponse.setDetails(map);
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
     }
 }
