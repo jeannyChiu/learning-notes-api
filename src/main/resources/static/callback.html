@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Auth Callback</title>
+</head>
+<body>
+<script>
+    try {
+        // 例：#/auth/callback?token=xxx  或  #?token=xxx
+        const hash = window.location.hash || "";
+        const query = hash.startsWith("#") ? hash.substring(1) : hash; // 去掉 #
+        const params = new URLSearchParams(query.replace(/^\/?auth\/callback\??/, ""));
+
+        const token = params.get("token");
+        if (!token) throw new Error("找不到 token");
+
+        // 與你前端原本一致（之前是 localStorage.getItem('token')）
+        localStorage.setItem("token", token);
+
+        // 清理 URL，避免 token 殘留在歷史紀錄
+        window.location.replace("/");
+    } catch (e) {
+        // 失敗就回登入頁（或顯示錯誤）
+        console.error(e);
+        window.location.replace("/");
+    }
+</script>
+</body>
+</html>

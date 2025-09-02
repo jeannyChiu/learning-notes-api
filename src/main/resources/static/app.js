@@ -432,13 +432,38 @@ const AuthForm = ({ isLogin, onToggle, onSuccess }) => {
                     {loading ? 'Processing...' : (isLogin ? 'Sign In' : 'Sign Up')}
                 </Button>
 
+                {/* 分隔線 */}
+                <div className="relative my-6">
+                    <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-gray-300"></div>
+                    </div>
+                    <div className="relative flex justify-center text-sm">
+                        <span className="px-2 bg-white text-gray-500">或者</span>
+                    </div>
+                </div>
+
+                {/* Google 登入按鈕 */}
+                <button
+                    type="button"
+                    onClick={() => window.location.href = '/oauth2/authorization/google'}
+                    className="w-full flex items-center justify-center px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
+                >
+                    <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    使用 Google {isLogin ? '登入' : '註冊'}
+                </button>
+
                 <div className="text-center">
                     <button
                         type="button"
                         onClick={onToggle}
                         className="text-blue-600 hover:text-blue-800 text-sm"
                     >
-                        {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
+                        {isLogin ? "沒有帳號？立即註冊" : "已有帳號？返回登入"}
                     </button>
                 </div>
             </form>
@@ -858,40 +883,71 @@ const NotesDashboard = ({ user, onLogout }) => {
         }
     }, [pageSize]);
 
-    // 初始化時載入前幾頁以收集標籤
-    const initializeTags = useCallback(async () => {
+    // 初始化載入筆記並收集標籤
+    const initializeData = useCallback(async () => {
         try {
-            // 載入前3頁的筆記以收集更多標籤
-            for (let page = 0; page < 3; page++) {
-                const response = await apiService.getNotes(page, pageSize, '', '');
-                if (response.content) {
-                    response.content.forEach(note => {
-                        note.tags?.forEach(tag => {
-                            allTagsSetRef.current.add(tag.name);
+            // 先載入第一頁筆記（用戶會看到的頁面）
+            setLoading(true);
+            const firstPageResponse = await apiService.getNotes(0, pageSize, '', '');
+            
+            // 設置第一頁數據
+            setNotes(firstPageResponse.content || []);
+            setCurrentPage(firstPageResponse.number || 0);
+            setTotalPages(firstPageResponse.totalPages || 0);
+            setTotalElements(firstPageResponse.totalElements || 0);
+            
+            // 從第一頁收集標籤
+            firstPageResponse.content?.forEach(note => {
+                note.tags?.forEach(tag => {
+                    allTagsSetRef.current.add(tag.name);
+                });
+            });
+            
+            // 背景載入其他頁面來收集更多標籤（不阻塞UI）
+            const totalPages = firstPageResponse.totalPages || 0;
+            const maxPagesToLoad = Math.min(3, totalPages);
+            
+            for (let page = 1; page < maxPagesToLoad; page++) {
+                try {
+                    const response = await apiService.getNotes(page, pageSize, '', '');
+                    if (response.content) {
+                        response.content.forEach(note => {
+                            note.tags?.forEach(tag => {
+                                allTagsSetRef.current.add(tag.name);
+                            });
                         });
-                    });
+                    }
+                } catch (error) {
+                    console.warn(`Failed to load page ${page} for tags:`, error);
+                    break;
                 }
-                // 如果沒有更多頁面，提前結束
-                if (page >= response.totalPages - 1) break;
             }
+            
+            // 更新標籤列表
             setAllTags(Array.from(allTagsSetRef.current).sort());
         } catch (error) {
-            console.error('Failed to initialize tags:', error);
+            console.error('Failed to initialize data:', error);
+            showToast('Failed to load notes', 'error');
+        } finally {
+            setLoading(false);
         }
     }, [pageSize]);
 
     useEffect(() => {
-        initializeTags();
-        loadNotes(0, searchTerm, selectedTag);
+        initializeData();
     }, []);
 
     // 搜尋功能：當搜尋詞或標籤變化時重新載入筆記（重置到第一頁）
+    // 注意：初始化時 searchTerm 和 selectedTag 都是空字串，所以不會觸發
     useEffect(() => {
-        const delayedSearch = setTimeout(() => {
-            loadNotes(0, searchTerm, selectedTag);
-        }, 300); // 300ms 延遲以避免過度搜尋
+        // 只有在組件已初始化後才執行搜尋
+        if (notes.length > 0 || searchTerm || selectedTag) {
+            const delayedSearch = setTimeout(() => {
+                loadNotes(0, searchTerm, selectedTag);
+            }, 300); // 300ms 延遲以避免過度搜尋
 
-        return () => clearTimeout(delayedSearch);
+            return () => clearTimeout(delayedSearch);
+        }
     }, [searchTerm, selectedTag, loadNotes]);
     
     // Fetch search suggestions with debounce

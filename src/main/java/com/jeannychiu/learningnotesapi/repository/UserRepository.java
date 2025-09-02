@@ -22,4 +22,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * @return 包含使用者的Optional，如果不存在則為空
      */
     Optional<User> findByEmail(String email);
+
+    /**
+     * 根據 Google 唯一 ID 查詢使用者
+     *
+     * @param googleSub Google 唯一 ID
+     * @return 包含使用者的Optional，如果不存在則為空
+     */
+    Optional<User> findByGoogleSub(String googleSub);
 }

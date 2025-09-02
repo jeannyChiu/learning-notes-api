@@ -22,4 +22,7 @@ public class User {
 
     @NotBlank
     private String role;
+
+    @Column(name = "google_sub")
+    private String googleSub;
 }

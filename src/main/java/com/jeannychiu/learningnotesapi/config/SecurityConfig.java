@@ -1,10 +1,8 @@
 package com.jeannychiu.learningnotesapi.config;
 
 import com.jeannychiu.learningnotesapi.filter.TestEndpointFilter;
-import com.jeannychiu.learningnotesapi.security.CustomAccessDeniedHandler;
-import com.jeannychiu.learningnotesapi.security.JwtAuthenticationEntryPoint;
-import com.jeannychiu.learningnotesapi.security.JwtAuthenticationFilter;
-import com.jeannychiu.learningnotesapi.security.JwtUtil;
+import com.jeannychiu.learningnotesapi.security.*;
+import com.jeannychiu.learningnotesapi.service.ApiLogService;
 
 import java.util.Arrays;
 
@@ -31,8 +29,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public JwtAuthenticationFilter jwtAuthenticationFilter(JwtUtil jwtUtil) {
-        return new JwtAuthenticationFilter(jwtUtil);
+    public JwtAuthenticationFilter jwtAuthenticationFilter(JwtUtil jwtUtil, ApiLogService apiLogService) {
+        return new JwtAuthenticationFilter(jwtUtil, apiLogService);
     }
     
     @Bean
@@ -63,17 +61,21 @@ public class SecurityConfig {
             CustomAccessDeniedHandler customAccessDeniedHandler,
             TestEndpointFilter testEndpointFilter,
             CorsConfigurationSource corsConfigurationSource,
-            @Value("${app.enable-test-endpoints:false}") boolean enableTestEndpoints) throws Exception {
+            @Value("${app.enable-test-endpoints:false}") boolean enableTestEndpoints,
+            GoogleOAuth2SuccessHandler googleOAuth2SuccessHandler,
+            GoogleOAuth2FailureHandler googleOAuth2FailureHandler) throws Exception {
         
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource))
             .csrf(csrf -> csrf.disable())
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .authorizeHttpRequests(auth -> {
                 // 允許靜態資源訪問 - 更廣泛的配置
                 auth.requestMatchers("/", "/index.html", "/app.js", "/static/**", "/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll();
                 // 允許認證端點
                 auth.requestMatchers("/auth/register", "/auth/login").permitAll();
+                // 允許 Google OAuth2 端點
+                auth.requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll();
                 // 允許錯誤頁面
                 auth.requestMatchers("/error").permitAll();
 
@@ -93,6 +95,7 @@ public class SecurityConfig {
                 
                 auth.anyRequest().authenticated();
             })
+            .oauth2Login(oauth -> oauth.successHandler(googleOAuth2SuccessHandler).failureHandler(googleOAuth2FailureHandler))
             // 確保 TestEndpointFilter 在所有 Spring Security 過濾器之前執行
             .addFilterBefore(testEndpointFilter, SecurityContextHolderFilter.class)
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

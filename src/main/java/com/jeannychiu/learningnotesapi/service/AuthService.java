@@ -14,6 +14,7 @@ import com.jeannychiu.learningnotesapi.security.JwtUtil;
 import com.jeannychiu.learningnotesapi.validator.PasswordValidator;
 
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -96,6 +97,43 @@ public class AuthService {
         }
 
         // 登入成功，回傳 UserResponse
+        return createUserResponse(user, true);
+    }
+
+    /**
+     * Google 登入
+     *
+     * @param googleSub Google 唯一 ID
+     * @param email 使用者信箱
+     * @return 包含 JWT token 的使用者回應
+     */
+    @Transactional
+    public UserResponse loginByGoogle(String googleSub, String email) {
+        // 先用 google_sub 查（已綁定過就直接回傳）
+        User user = userRepository.findByGoogleSub(googleSub).orElse(null);
+        if (user != null) {
+            return createUserResponse(user, true);
+        }
+
+        // 用 email 查（舊帳綁定）
+        user = userRepository.findByEmail(email).orElse(null);
+        if (user != null) {
+            user.setGoogleSub(googleSub); // 綁定 Google
+            userRepository.save(user);
+            return createUserResponse(user, true);
+        }
+
+        // 都沒有 → 建新帳號
+        user = new User();
+        user.setEmail(email);
+        user.setGoogleSub(googleSub);
+        user.setRole(RoleConstants.USER);
+
+        // 因為密碼不可為 NULL，塞入一組隨機字串的雜湊
+        String randomRaw = "GOOG-" + UUID.randomUUID();
+        user.setPassword(passwordEncoder.encode(randomRaw));
+
+        userRepository.save(user);
         return createUserResponse(user, true);
     }
 

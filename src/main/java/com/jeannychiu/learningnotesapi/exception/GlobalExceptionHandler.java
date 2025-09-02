@@ -1,6 +1,8 @@
 package com.jeannychiu.learningnotesapi.exception;
 
+import com.jeannychiu.learningnotesapi.service.ApiLogService;
 import jakarta.persistence.OptimisticLockException;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +18,11 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    private final ApiLogService apiLogService;
+
+    public GlobalExceptionHandler(ApiLogService apiLogService) {
+        this.apiLogService = apiLogService;
+    }
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handle(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
@@ -44,10 +51,16 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ErrorResponse> handleAccessDeniedException(AccessDeniedException ex) {
+    public ResponseEntity<ErrorResponse> handleAccessDeniedException(AccessDeniedException ex, HttpServletRequest request) {
+        int statusCode = HttpStatus.FORBIDDEN.value();
+        String message = "您沒有權限執行此操作";
+        
+        // 記錄到 api_log 資料表
+        apiLogService.logSecurityError(request, statusCode, message);
+        
         ErrorResponse errorResponse = new ErrorResponse();
-        errorResponse.setStatus(HttpStatus.FORBIDDEN.value());
-        errorResponse.setMessage("您沒有權限執行此操作");
+        errorResponse.setStatus(statusCode);
+        errorResponse.setMessage(message);
         errorResponse.setTimestamp(LocalDateTime.now());
 
         return new ResponseEntity<>(errorResponse, HttpStatus.FORBIDDEN);
@@ -64,20 +77,32 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(InvalidCredentialsException.class)
-    public ResponseEntity<ErrorResponse> handleInvalidCredentials(InvalidCredentialsException ex) {
+    public ResponseEntity<ErrorResponse> handleInvalidCredentials(InvalidCredentialsException ex, HttpServletRequest request) {
+        int statusCode = HttpStatus.UNAUTHORIZED.value();
+        String message = ex.getMessage();
+        
+        // 記錄到 api_log 資料表
+        apiLogService.logSecurityError(request, statusCode, message);
+        
         ErrorResponse errorResponse = new ErrorResponse();
-        errorResponse.setStatus(HttpStatus.UNAUTHORIZED.value());
-        errorResponse.setMessage(ex.getMessage());
+        errorResponse.setStatus(statusCode);
+        errorResponse.setMessage(message);
         errorResponse.setTimestamp(LocalDateTime.now());
 
         return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
     }
 
     @ExceptionHandler(InvalidTokenException.class)
-    public ResponseEntity<ErrorResponse> handleInvalidToken(InvalidTokenException ex) {
+    public ResponseEntity<ErrorResponse> handleInvalidToken(InvalidTokenException ex, HttpServletRequest request) {
+        int statusCode = HttpStatus.UNAUTHORIZED.value();
+        String message = ex.getMessage();
+        
+        // 記錄到 api_log 資料表
+        apiLogService.logSecurityError(request, statusCode, message);
+        
         ErrorResponse errorResponse = new ErrorResponse();
-        errorResponse.setStatus(HttpStatus.UNAUTHORIZED.value());
-        errorResponse.setMessage(ex.getMessage());
+        errorResponse.setStatus(statusCode);
+        errorResponse.setMessage(message);
         errorResponse.setTimestamp(LocalDateTime.now());
 
         return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);

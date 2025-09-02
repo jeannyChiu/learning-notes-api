@@ -2,6 +2,7 @@ package com.jeannychiu.learningnotesapi.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jeannychiu.learningnotesapi.exception.InvalidTokenException;
+import com.jeannychiu.learningnotesapi.service.ApiLogService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,10 +26,12 @@ import java.util.Map;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
     private final JwtUtil jwtUtil;
+    private final ApiLogService apiLogService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public JwtAuthenticationFilter(JwtUtil jwtUtil) {
+    public JwtAuthenticationFilter(JwtUtil jwtUtil, ApiLogService apiLogService) {
         this.jwtUtil = jwtUtil;
+        this.apiLogService = apiLogService;
     }
 
     @Override
@@ -50,7 +53,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 if (jwtUtil.isTokenExpired(token)) {
                     SecurityContextHolder.clearContext();
                     log.warn("Token 已過期");
-                    sendErrorResponse(response, HttpStatus.UNAUTHORIZED, "Token 已過期，請重新登入");
+                    sendErrorResponse(request, response, HttpStatus.UNAUTHORIZED, "Token 已過期，請重新登入");
                     return;
                 }
                 
@@ -63,20 +66,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 } else {
                     SecurityContextHolder.clearContext();
                     log.warn("Token 驗證失敗");
-                    sendErrorResponse(response, HttpStatus.UNAUTHORIZED, "Token 驗證失敗，請重新登入");
+                    sendErrorResponse(request, response, HttpStatus.UNAUTHORIZED, "Token 驗證失敗，請重新登入");
                     return;
                 }
             } catch (InvalidTokenException e) {
                 // 當 token 處理（解析、驗證）失敗時，清除 SecurityContext
                 SecurityContextHolder.clearContext();
                 log.error("Token 處理異常: {}", e.getMessage());
-                sendErrorResponse(response, HttpStatus.UNAUTHORIZED, "無效的 Token: " + e.getMessage());
+                sendErrorResponse(request, response, HttpStatus.UNAUTHORIZED, "無效的 Token: " + e.getMessage());
                 return;
             } catch (Exception e) {
                 // 其他未預期的異常
                 SecurityContextHolder.clearContext();
                 log.error("Token 處理發生未預期錯誤: {}", e.getMessage());
-                sendErrorResponse(response, HttpStatus.UNAUTHORIZED, "認證處理發生錯誤，請重新登入");
+                sendErrorResponse(request, response, HttpStatus.UNAUTHORIZED, "認證處理發生錯誤，請重新登入");
                 return;
             }
         }
@@ -85,7 +88,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private void sendErrorResponse(HttpServletResponse response, HttpStatus status, String message) throws IOException {
+    private void sendErrorResponse(HttpServletRequest request, HttpServletResponse response, HttpStatus status, String message) throws IOException {
+        // 記錄到 api_log 資料表
+        apiLogService.logSecurityError(request, status.value(), message);
+        
         response.setStatus(status.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
