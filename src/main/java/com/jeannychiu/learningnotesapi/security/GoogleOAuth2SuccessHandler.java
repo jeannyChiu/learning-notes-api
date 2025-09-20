@@ -22,7 +22,7 @@ public class GoogleOAuth2SuccessHandler implements AuthenticationSuccessHandler 
 
     private final AuthService authService;
 
-    private static final String FRONTEND_BASE_URL = "http://localhost:8080";
+    private static final String FRONTEND_BASE_URL = "https://learning-notes-app-926274779343.asia-east1.run.app";
 
     public GoogleOAuth2SuccessHandler(AuthService authService) {
         this.authService = authService;
