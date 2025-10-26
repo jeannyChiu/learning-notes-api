@@ -2,6 +2,7 @@ package com.jeannychiu.learningnotesapi.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jeannychiu.learningnotesapi.dto.UserResponse;
 import com.jeannychiu.learningnotesapi.model.ApiLog;
 import com.jeannychiu.learningnotesapi.model.User;
 import com.jeannychiu.learningnotesapi.repository.ApiLogRepository;
@@ -10,6 +11,9 @@ import com.jeannychiu.learningnotesapi.security.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.reflect.MethodSignature;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestBody;
 
@@ -83,6 +87,26 @@ public class ApiLogService {
         }
     }
 
+    public void logAuthenticationSuccess(HttpServletRequest request, UserResponse response, int statusCode) {
+        if (request == null) {
+            return;
+        }
+
+        try {
+            LocalDateTime now = LocalDateTime.now();
+            String uri = request.getRequestURI();
+            String method = request.getMethod();
+            Long userId = extractUserIdFromRequest(request);
+
+            String responseBody = serializeResponse(response);
+
+            ApiLog apiLog = createApiLog(uri, method, "", responseBody, statusCode, now, now, 0L, userId);
+            apiLogRepository.save(apiLog);
+        } catch (Exception e) {
+            System.err.println("Failed to log authentication success: " + e.getMessage());
+        }
+    }
+
     private ApiLog createApiLog(String uri, String method, String requestBody, String responseBody, 
                               int statusCode, LocalDateTime startTime, LocalDateTime endTime, 
                               Long duration, Long userId) {
@@ -101,6 +125,30 @@ public class ApiLogService {
 
     private Long extractUserIdFromRequest(HttpServletRequest request) {
         try {
+            // 1. 優先從 SecurityContext 獲取認證資訊
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication != null && authentication.isAuthenticated()) {
+                Object principal = authentication.getPrincipal();
+                String email = null;
+
+                if (principal instanceof String) {
+                    // 來自 JWT 驗證
+                    email = (String) principal;
+                } else if (principal instanceof OAuth2User) {
+                    // 來自 OAuth2 登入
+                    OAuth2User oauth2User = (OAuth2User) principal;
+                    email = oauth2User.getAttribute("email");
+                }
+
+                if (email != null) {
+                    User user = userRepository.findByEmail(email).orElse(null);
+                    if (user != null) {
+                        return user.getId();
+                    }
+                }
+            }
+
+            // 2. 如果 SecurityContext 中沒有，再嘗試從 JWT header 獲取 (作為備用)
             String authHeader = request.getHeader("Authorization");
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
                 String token = authHeader.substring(7);
@@ -110,7 +158,7 @@ public class ApiLogService {
                 return user != null ? user.getId() : null;
             }
         } catch (Exception e) {
-            // JWT 解析失敗或使用者不存在，回傳 null
+            // 解析失敗或使用者不存在，不拋出錯誤，僅回傳 null
         }
         return null;
     }

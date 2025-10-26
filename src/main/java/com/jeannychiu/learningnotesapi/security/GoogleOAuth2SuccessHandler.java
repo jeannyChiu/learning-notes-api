@@ -1,12 +1,14 @@
 package com.jeannychiu.learningnotesapi.security;
 
 import com.jeannychiu.learningnotesapi.dto.UserResponse;
+import com.jeannychiu.learningnotesapi.service.ApiLogService;
 import com.jeannychiu.learningnotesapi.service.AuthService;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
@@ -21,11 +23,15 @@ public class GoogleOAuth2SuccessHandler implements AuthenticationSuccessHandler 
     private static final Logger log = LoggerFactory.getLogger(GoogleOAuth2SuccessHandler.class);
 
     private final AuthService authService;
+    private final ApiLogService apiLogService;
+    private final String frontendBaseUrl;
 
-    private static final String FRONTEND_BASE_URL = "https://learning-notes-app-926274779343.asia-east1.run.app";
-
-    public GoogleOAuth2SuccessHandler(AuthService authService) {
+    public GoogleOAuth2SuccessHandler(AuthService authService,
+                                      ApiLogService apiLogService,
+                                      @Value("${app.frontend-base-url}") String frontendBaseUrl) {
         this.authService = authService;
+        this.apiLogService = apiLogService;
+        this.frontendBaseUrl = frontendBaseUrl;
     }
 
     @Override
@@ -40,7 +46,9 @@ public class GoogleOAuth2SuccessHandler implements AuthenticationSuccessHandler 
         UserResponse userResponse = authService.loginByGoogle(sub, email);
         String token = userResponse.getToken();
 
-        String redirectUrl = FRONTEND_BASE_URL + "/callback.html#?token=" + URLEncoder.encode(token, StandardCharsets.UTF_8);
+        String redirectUrl = frontendBaseUrl + "/callback.html#?token=" + URLEncoder.encode(token, StandardCharsets.UTF_8);
+
+        apiLogService.logAuthenticationSuccess(request, userResponse, HttpServletResponse.SC_FOUND);
 
         log.info("Google OAuth2 login success for email={} sub={}, redirect to {}", email, sub, redirectUrl);
 
